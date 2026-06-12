@@ -35,3 +35,6 @@ Thumbs.db
 
 # Token
 .github_token
+
+# Technical specification (ТЗ)
+ТЗ*.md
