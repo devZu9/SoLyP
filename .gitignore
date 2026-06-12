@@ -1,0 +1,37 @@
+# Build directories
+build/
+Builds/
+.vs/
+
+# IDE
+*.sln
+*.suo
+*.vcxproj.user
+*.vcxproj.filters
+*.opensdf
+*.sdf
+*.VC.opendb
+*.vcxproj
+*.vcxproj.filters
+Debug/
+Release/
+x64/
+Win32/
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+CMakeUserPresets.json
+_deps/
+
+# Juce
+JuceHeader.h
+SoLyP_artefacts/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Token
+.github_token
