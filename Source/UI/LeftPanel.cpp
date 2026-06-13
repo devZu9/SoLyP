@@ -1,38 +1,42 @@
 #include "LeftPanel.h"
 #include "icons/Icons.h"
+#include "Theme.h"
 
 LeftPanel::LeftPanel()
 {
     // panel icon (squares-four)
-    auto panelSvg = juce::String(Icons::squaresFour).replace("#000000", "#E0EDFF");
+    auto panelSvg = juce::String(Icons::squaresFour).replace("#000000", "#" + Theme::iconPrimary.toDisplayString(false));
     auto panelXml = juce::XmlDocument::parse(panelSvg);
     if (panelXml != nullptr)
         iconDrawable = juce::Drawable::createFromSVG(*panelXml);
 
-    // settings icon (gear)
-    auto gearSvg = juce::String(Icons::gear).replace("#000000", "#E0EDFF");
+    // settings icon (gear — normal + hover)
+    auto gearSvg = juce::String(Icons::gear).replace("#000000", "#" + Theme::iconPrimary.toDisplayString(false));
+    auto gearHoverSvg = juce::String(Icons::gear).replace("#000000", "#" + Theme::iconHover.toDisplayString(false));
     auto gearXml = juce::XmlDocument::parse(gearSvg);
-    if (gearXml != nullptr)
+    auto gearHoverXml = juce::XmlDocument::parse(gearHoverSvg);
+    if (gearXml != nullptr && gearHoverXml != nullptr)
     {
-        auto gearDrawable = juce::Drawable::createFromSVG(*gearXml);
-        settingsBtn.setImages(gearDrawable.get());
+        auto gearNormal = juce::Drawable::createFromSVG(*gearXml);
+        auto gearHover  = juce::Drawable::createFromSVG(*gearHoverXml);
+        settingsBtn.setImages(gearNormal.get(), gearHover.get());
     }
 
     editButton.setVisible(false);
-    editButton.setColour(juce::TextButton::buttonColourId, juce::Colour(0xFF1A2A4A));
-    editButton.setColour(juce::TextButton::textColourOnId, juce::Colours::white);
-    editButton.setColour(juce::TextButton::textColourOffId, juce::Colour(0xFFE0EDFF));
+    editButton.setColour(juce::TextButton::buttonColourId, Theme::bgButton);
+    editButton.setColour(juce::TextButton::textColourOnId, Theme::textOnButton);
+    editButton.setColour(juce::TextButton::textColourOffId, Theme::iconPrimary);
     addAndMakeVisible(editButton);
 
     loadButton.setVisible(false);
-    loadButton.setColour(juce::TextButton::buttonColourId, juce::Colour(0xFF1A2A4A));
-    loadButton.setColour(juce::TextButton::textColourOnId, juce::Colours::white);
-    loadButton.setColour(juce::TextButton::textColourOffId, juce::Colour(0xFFE0EDFF));
+    loadButton.setColour(juce::TextButton::buttonColourId, Theme::bgButton);
+    loadButton.setColour(juce::TextButton::textColourOnId, Theme::textOnButton);
+    loadButton.setColour(juce::TextButton::textColourOffId, Theme::iconPrimary);
     addAndMakeVisible(loadButton);
 
     settingsBtn.setVisible(false);
     settingsBtn.setColour(juce::DrawableButton::backgroundColourId, juce::Colours::transparentBlack);
-    settingsBtn.setColour(juce::DrawableButton::backgroundOnColourId, juce::Colour(0x221A2A4A));
+    settingsBtn.setColour(juce::DrawableButton::backgroundOnColourId, Theme::bgButtonHover);
     addAndMakeVisible(settingsBtn);
 
     repaint();
@@ -49,12 +53,12 @@ void LeftPanel::paint(juce::Graphics& g)
 
     if (hovered)
     {
-        g.setColour(juce::Colour(0xFF13294B));
+        g.setColour(Theme::bgPanel);
         g.fillRoundedRectangle(getLocalBounds().toFloat(), 18.0f);
     }
     else
     {
-        g.setColour(juce::Colour(0xFF13294B));
+        g.setColour(Theme::bgPanel);
         g.fillRoundedRectangle(iconArea.toFloat(), 10.0f);
 
         if (iconDrawable != nullptr)

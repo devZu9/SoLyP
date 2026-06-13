@@ -1,4 +1,5 @@
 #include "PluginEditor.h"
+#include "UI/Theme.h"
 
 namespace
 {
@@ -172,7 +173,7 @@ void SoLyPAudioProcessorEditor::sliderValueChanged(juce::Slider* slider)
 
 void SoLyPAudioProcessorEditor::paint(juce::Graphics& g)
 {
-    g.fillAll(juce::Colour(0xFF1A1A2E));
+    g.fillAll(Theme::bgMain);
 
     if (editMode)
     {
@@ -198,7 +199,7 @@ void SoLyPAudioProcessorEditor::paintLyrics(juce::Graphics& g)
     const auto& song = processor.getCurrentSong();
     if (song.sections.isEmpty())
     {
-        g.setColour(juce::Colours::grey);
+        g.setColour(Theme::textHint);
         g.setFont(juce::FontOptions(24.0f));
         g.drawText("Load a song to begin\n(click Edit in top-left)",
                    getLocalBounds(), juce::Justification::centred);
@@ -230,14 +231,14 @@ void SoLyPAudioProcessorEditor::paintLyrics(juce::Graphics& g)
         int idx = startLine + i;
         if (idx >= static_cast<int>(section.lines.size())) break;
 
-        g.setColour(i == 0 ? juce::Colour(0xFFF0C040) : juce::Colours::white);
+        g.setColour(i == 0 ? Theme::textActiveLine : Theme::textOnButton);
         g.setFont(juce::FontOptions(fontSize));
         auto lineBounds = bounds.withY(static_cast<int>(y)).withHeight(static_cast<int>(lineHeight));
         g.drawText(section.lines[idx], lineBounds, juce::Justification::centred, true);
         y += lineHeight;
     }
 
-    g.setColour(juce::Colours::white.withAlpha(0.3f));
+    g.setColour(Theme::textStatusBar);
     g.setFont(14.0f);
     juce::String info = "Section: " + section.name
         + "  |  Bar: " + juce::String(processor.getCurrentBar())
@@ -253,7 +254,7 @@ void SoLyPAudioProcessorEditor::paintCountdown(juce::Graphics& g)
     juce::String digit = juce::String(processor.getCountdownValue());
     if (digit == "0")
     {
-        g.setColour(juce::Colour(0xFF44FF44));
+        g.setColour(Theme::countdown);
         digit = "GO!";
     }
     auto bounds = getLocalBounds();
@@ -266,7 +267,7 @@ void SoLyPAudioProcessorEditor::paintCountdown(juce::Graphics& g)
         if (nextIdx < static_cast<int>(song.sections.size()))
         {
             g.setFont(juce::FontOptions(36.0f));
-            g.setColour(juce::Colour(0xFF88CCFF));
+            g.setColour(Theme::textPause);
             g.drawText(song.sections[nextIdx].lines[0], bounds, juce::Justification::centred);
         }
     }
@@ -274,9 +275,9 @@ void SoLyPAudioProcessorEditor::paintCountdown(juce::Graphics& g)
 
 void SoLyPAudioProcessorEditor::paintPauseOverlay(juce::Graphics& g)
 {
-    g.setColour(juce::Colour(0x88000000));
+    g.setColour(Theme::bgOverlay);
     g.fillRect(getLocalBounds());
-    g.setColour(juce::Colour(0xFFFFCC00));
+    g.setColour(Theme::textPause);
     g.setFont(juce::FontOptions(28.0f));
     g.drawText("(waiting, not singing)", getLocalBounds(), juce::Justification::centred);
 
@@ -286,7 +287,7 @@ void SoLyPAudioProcessorEditor::paintPauseOverlay(juce::Graphics& g)
         const auto& section = song.sections[processor.getCurrentSectionIndex()];
         int nextLine = processor.getCurrentLineIndex() + 1;
         g.setFont(juce::FontOptions(24.0f));
-        g.setColour(juce::Colour(0x88AAAAAA));
+        g.setColour(Theme::textPause);
         auto bounds = getLocalBounds().removeFromBottom(getHeight() / 3);
         auto y = static_cast<float>(bounds.getY() + 20);
         for (int i = 0; i < processor.getPreLinesOnPause(); ++i)
@@ -303,7 +304,7 @@ void SoLyPAudioProcessorEditor::paintPauseOverlay(juce::Graphics& g)
 void SoLyPAudioProcessorEditor::paintSaveDialog(juce::Graphics& g)
 {
     // dim background
-    g.setColour(juce::Colour(0xAA000000));
+    g.setColour(Theme::bgOverlay);
     g.fillRect(getLocalBounds());
 
     // dialog box
@@ -315,14 +316,14 @@ void SoLyPAudioProcessorEditor::paintSaveDialog(juce::Graphics& g)
         dialogW,
         dialogH);
 
-    g.setColour(juce::Colour(0xFF2A2A4A));
+    g.setColour(Theme::bgDialog);
     g.fillRoundedRectangle(dialogArea.toFloat(), 10.0f);
-    g.setColour(juce::Colour(0xFF4444AA));
+    g.setColour(Theme::accentBorder);
     g.drawRoundedRectangle(dialogArea.toFloat(), 10.0f, 2.0f);
 
     // × close button
     auto closeArea = dialogArea.removeFromTop(32).removeFromRight(32);
-    g.setColour(juce::Colour(0xFF6666CC));
+    g.setColour(Theme::accentClose);
     g.drawText("×", closeArea, juce::Justification::centred);
 
     // inner area
@@ -348,13 +349,13 @@ void SoLyPAudioProcessorEditor::paintSaveDialog(juce::Graphics& g)
     inner.removeFromTop(gap + 4);
 
     // Save button area hint
-    g.setColour(juce::Colour(0xFF4444AA));
+    g.setColour(Theme::accentBorder);
     g.drawRoundedRectangle(inner.removeFromLeft(80).reduced(2).toFloat(), 4.0f, 1.0f);
 }
 
 void SoLyPAudioProcessorEditor::paintError(juce::Graphics& g)
 {
-    g.setColour(juce::Colour(0xCCFF0000));
+    g.setColour(Theme::textError);
     g.setFont(18.0f);
     g.drawText(lastError, getLocalBounds().removeFromBottom(60), juce::Justification::centred);
 }

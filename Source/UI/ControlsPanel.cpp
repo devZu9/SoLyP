@@ -1,9 +1,10 @@
 #include "ControlsPanel.h"
 #include "icons/Icons.h"
+#include "Theme.h"
 
 ControlsPanel::ControlsPanel()
 {
-    auto svgStr = juce::String(Icons::textAlignLeft).replace("#000000", "#E0EDFF");
+    auto svgStr = juce::String(Icons::textAlignLeft).replace("#000000", "#" + Theme::iconPrimary.toDisplayString(false));
     auto xml = juce::XmlDocument::parse(svgStr);
     if (xml != nullptr)
         iconDrawable = juce::Drawable::createFromSVG(*xml);
@@ -12,6 +13,8 @@ ControlsPanel::ControlsPanel()
     linesSlider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
     linesSlider.setRange(2.0, 10.0, 1.0);
     linesSlider.setValue(6.0);
+    linesSlider.setColour(juce::Slider::trackColourId, Theme::sliderTrack);
+    linesSlider.setColour(juce::Slider::thumbColourId, Theme::sliderThumb);
     linesSlider.setVisible(false);
     addAndMakeVisible(linesSlider);
 
@@ -19,7 +22,8 @@ ControlsPanel::ControlsPanel()
     fontSizeSlider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
     fontSizeSlider.setRange(20.0, 200.0, 1.0);
     fontSizeSlider.setValue(80.0);
-    fontSizeSlider.setVisible(false);
+    fontSizeSlider.setColour(juce::Slider::trackColourId, Theme::sliderTrack);
+    fontSizeSlider.setColour(juce::Slider::thumbColourId, Theme::sliderThumb);
     addAndMakeVisible(fontSizeSlider);
 
     repaint();
@@ -36,7 +40,7 @@ void ControlsPanel::paint(juce::Graphics& g)
 
     if (hovered)
     {
-        g.setColour(juce::Colour(0xFF13294B));
+        g.setColour(Theme::bgPanel);
         g.fillRoundedRectangle(getLocalBounds().toFloat(), 18.0f);
 
         auto inner = getLocalBounds().reduced(20, 18);
@@ -45,20 +49,20 @@ void ControlsPanel::paint(juce::Graphics& g)
         int rowGap = 13;
 
         auto row1 = inner.removeFromTop(rowH);
-        g.setColour(juce::Colours::white);
+        g.setColour(Theme::iconPrimary);
         g.setFont(juce::FontOptions(13.0f));
         g.drawText("Lines:", row1.removeFromLeft(labelW), juce::Justification::centredLeft);
 
         inner.removeFromTop(rowGap);
 
         auto row2 = inner.removeFromTop(rowH);
-        g.setColour(juce::Colours::white);
+        g.setColour(Theme::iconPrimary);
         g.setFont(juce::FontOptions(13.0f));
         g.drawText("Size:", row2.removeFromLeft(labelW), juce::Justification::centredLeft);
     }
     else
     {
-        g.setColour(juce::Colour(0xFF13294B));
+        g.setColour(Theme::bgPanel);
         g.fillRoundedRectangle(iconArea.toFloat(), 10.0f);
 
         if (iconDrawable != nullptr)
