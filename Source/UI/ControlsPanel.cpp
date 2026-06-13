@@ -1,7 +1,13 @@
 #include "ControlsPanel.h"
+#include "icons/Icons.h"
 
 ControlsPanel::ControlsPanel()
 {
+    auto svgStr = juce::String(Icons::textAlignLeft).replace("#000000", "#E0EDFF");
+    auto xml = juce::XmlDocument::parse(svgStr);
+    if (xml != nullptr)
+        iconDrawable = juce::Drawable::createFromSVG(*xml);
+
     linesSlider.setSliderStyle(juce::Slider::LinearHorizontal);
     linesSlider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
     linesSlider.setRange(2.0, 10.0, 1.0);
@@ -52,20 +58,13 @@ void ControlsPanel::paint(juce::Graphics& g)
     }
     else
     {
-        // icon background + bars
         g.setColour(juce::Colour(0xFF13294B));
         g.fillRoundedRectangle(iconArea.toFloat(), 10.0f);
 
-        g.setColour(juce::Colour(0xFFE0EDFF));
-        int barW = 14;
-        int barH = 2;
-        int barGap = 4;
-        int cx = iconArea.getCentreX();
-        int cy = iconArea.getCentreY();
-        for (int i = -1; i <= 1; ++i)
+        if (iconDrawable != nullptr)
         {
-            auto bar = juce::Rectangle<int>(cx - barW / 2, cy + i * (barH + barGap) - barH / 2, barW, barH);
-            g.fillRoundedRectangle(bar.toFloat(), 1.0f);
+            auto dest = iconArea.reduced(6).toFloat();
+            iconDrawable->drawWithin(g, dest, juce::RectanglePlacement::centred, 1.0f);
         }
     }
 }

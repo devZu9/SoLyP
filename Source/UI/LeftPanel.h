@@ -15,12 +15,13 @@ public:
 
     juce::TextButton editButton{ "Edit" };
     juce::TextButton loadButton{ "Load" };
+    juce::DrawableButton settingsBtn{ "", juce::DrawableButton::ImageFitted };
 
     static constexpr int iconSize = 36;
     static constexpr int panelWidth = 160;
-    static constexpr int gap = 8;
+    static constexpr int settingsSize = 28;
     static constexpr int panelHeight = 66;
-    static constexpr int compWidth = iconSize + gap + panelWidth;
+    static constexpr int compWidth = panelWidth + 8 + settingsSize;
     static constexpr int compHeight = panelHeight;
 
     void setHovered(bool h);
@@ -29,4 +30,5 @@ private:
     juce::Rectangle<int> getIconRect() const;
 
     bool hovered = false;
+    std::unique_ptr<juce::Drawable> iconDrawable;
 };

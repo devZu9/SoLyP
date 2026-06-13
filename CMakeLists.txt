@@ -35,6 +35,7 @@ juce_add_plugin(SoLyP
     IS_MIDI_EFFECT                   TRUE
     EDITOR_WANTS_KEYBOARD_FOCUS      FALSE
     COPY_PLUGIN_AFTER_BUILD          FALSE
+    ICON_PATH                        "${CMAKE_SOURCE_DIR}/Source/UI/icons/app_icon.ico"
 )
 
 target_sources(SoLyP PRIVATE ${SoLyP_SOURCES})
@@ -42,6 +43,17 @@ target_include_directories(SoLyP PRIVATE Source)
 target_link_libraries(SoLyP PRIVATE juce::juce_audio_utils juce::juce_audio_devices)
 
 juce_generate_juce_header(SoLyP)
+
+target_compile_definitions(SoLyP PRIVATE
+    SOLYP_VERSION="${PROJECT_VERSION}"
+)
+
+# embed icon in standalone executable (Windows)
+if(WIN32)
+    set(ICON_RC_PATH "${CMAKE_BINARY_DIR}/generated/app_icon.rc")
+    file(WRITE "${ICON_RC_PATH}" "1 ICON \"${CMAKE_SOURCE_DIR}/Source/UI/icons/app_icon.ico\"\n")
+    target_sources(SoLyP_Standalone PRIVATE "${ICON_RC_PATH}")
+endif()
 
 if(MSVC)
     target_compile_options(SoLyP PRIVATE /W4)

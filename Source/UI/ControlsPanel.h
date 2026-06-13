@@ -28,4 +28,5 @@ private:
     void setHovered(bool h);
 
     bool hovered = false;
+    std::unique_ptr<juce::Drawable> iconDrawable;
 };

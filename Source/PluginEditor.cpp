@@ -145,6 +145,11 @@ void SoLyPAudioProcessorEditor::buttonClicked(juce::Button* btn)
         leftPanel->setHovered(false);
         loadSongFromFile();
     }
+    else if (btn == &leftPanel->settingsBtn)
+    {
+        leftPanel->setHovered(false);
+        // settings panel will be added here later
+    }
     else if (btn == &confirmSaveBtn)
         doSave();
     else if (btn == &cancelSaveBtn)
@@ -236,7 +241,8 @@ void SoLyPAudioProcessorEditor::paintLyrics(juce::Graphics& g)
     g.setFont(14.0f);
     juce::String info = "Section: " + section.name
         + "  |  Bar: " + juce::String(processor.getCurrentBar())
-        + "  |  " + (processor.getTransportState() == SoLyPAudioProcessor::TransportState::Playing ? "PLAYING" : "PAUSED");
+        + "  |  " + (processor.getTransportState() == SoLyPAudioProcessor::TransportState::Playing ? "PLAYING" : "PAUSED")
+        + "  |  v" + juce::String(SOLYP_VERSION);
     g.drawText(info, getLocalBounds().reduced(10, 5), juce::Justification::bottomLeft);
 }
 
