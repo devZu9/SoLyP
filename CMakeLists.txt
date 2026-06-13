@@ -18,6 +18,7 @@ set(SoLyP_SOURCES
     Source/PluginProcessor.cpp
     Source/PluginEditor.cpp
     Source/Data/Song.cpp
+    Source/Data/SettingsManager.cpp
     Source/Midi/MidiManager.cpp
     Source/UI/ControlsPanel.cpp
     Source/UI/LeftPanel.cpp

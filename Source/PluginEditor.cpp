@@ -1,5 +1,6 @@
 #include "PluginEditor.h"
 #include "UI/Theme.h"
+#include "Data/SettingsManager.h"
 
 namespace
 {
@@ -95,6 +96,13 @@ SoLyPAudioProcessorEditor::SoLyPAudioProcessorEditor(SoLyPAudioProcessor& p)
                              ControlsPanel::compWidth, ControlsPanel::compHeight);
     addAndMakeVisible(controlsPanel.get());
 
+    // load saved settings
+    auto settings = SettingsManager::load();
+    visibleLines = settings.visibleLines;
+    fontSize = settings.fontSize;
+    controlsPanel->linesSlider.setValue(visibleLines);
+    controlsPanel->fontSizeSlider.setValue(fontSize);
+
     processor.onStateChanged = [this]() { repaint(); };
 }
 
@@ -166,6 +174,12 @@ void SoLyPAudioProcessorEditor::sliderValueChanged(juce::Slider* slider)
         else if (slider == &controlsPanel->fontSizeSlider)
             fontSize = static_cast<float>(controlsPanel->fontSizeSlider.getValue());
     }
+
+    // auto-save settings
+    Settings s;
+    s.visibleLines = visibleLines;
+    s.fontSize = fontSize;
+    SettingsManager::save(s);
     repaint();
 }
 
