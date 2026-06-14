@@ -13,8 +13,8 @@ public:
     void mouseExit(const juce::MouseEvent&) override;
     void mouseMove(const juce::MouseEvent&) override;
 
-    juce::TextButton editButton{ "Edit" };
-    juce::TextButton loadButton{ "Load" };
+    juce::TextButton editButton{ "" };
+    juce::TextButton loadButton{ "" };
     juce::DrawableButton settingsBtn{ "", juce::DrawableButton::ImageFitted };
 
     static constexpr int iconSize = 36;
@@ -25,6 +25,7 @@ public:
     static constexpr int compHeight = panelHeight;
 
     void setHovered(bool h);
+    int getRequiredWidth() const;
 
 private:
     juce::Rectangle<int> getIconRect() const;

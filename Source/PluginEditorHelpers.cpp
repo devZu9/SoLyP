@@ -2,6 +2,9 @@
 #include "PluginEditorHelpers.h"
 #include "UI/Theme.h"
 #include "Data/SettingsManager.h"
+#include "Data/I18n.h"
+
+// ── shared helpers ─────────────────────────────────────────────────────────
 
 juce::String getDefaultSongDir()
 {
@@ -31,7 +34,7 @@ void SoLyPAudioProcessorEditor::paintLyrics(juce::Graphics& g)
     {
         g.setColour(Theme::textHint);
         g.setFont(juce::FontOptions(24.0f));
-        g.drawText("Load a song to begin\n(click Edit in top-left)",
+        g.drawText(I18n::get("empty.title") + "\n" + I18n::get("empty.hint"),
                    getLocalBounds(), juce::Justification::centred);
         return;
     }
@@ -68,13 +71,22 @@ void SoLyPAudioProcessorEditor::paintLyrics(juce::Graphics& g)
         y += lineHeight;
     }
 
+    // status bar
     g.setColour(Theme::textStatusBar);
     g.setFont(14.0f);
-    juce::String info = "Section: " + section.name
-        + "  |  Bar: " + juce::String(processor.getCurrentBar())
-        + "  |  " + (processor.getTransportState() == SoLyPAudioProcessor::TransportState::Playing ? "PLAYING" : "PAUSED")
-        + "  |  v" + juce::String(SOLYP_VERSION);
-    g.drawText(info, getLocalBounds().reduced(10, 5), juce::Justification::bottomLeft);
+
+    const auto& currentSong = processor.getCurrentSong();
+    juce::String leftInfo;
+    if (currentSong.fileTitle.isNotEmpty())
+        leftInfo = currentSong.fileTitle + "  |  ";
+
+    leftInfo += I18n::get("status.section") + " " + section.name
+        + "  |  " + I18n::get("status.bar") + " " + juce::String(processor.getCurrentBar())
+        + "  |  " + (processor.getTransportState() == SoLyPAudioProcessor::TransportState::Playing ? I18n::get("status.playing") : I18n::get("status.paused"));
+    g.drawText(leftInfo, getLocalBounds().reduced(10, 5), juce::Justification::bottomLeft);
+
+    // version — bottom-right
+    g.drawText("v" + juce::String(SOLYP_VERSION), getLocalBounds().reduced(10, 5), juce::Justification::bottomRight);
 }
 
 void SoLyPAudioProcessorEditor::paintCountdown(juce::Graphics& g)
@@ -85,7 +97,7 @@ void SoLyPAudioProcessorEditor::paintCountdown(juce::Graphics& g)
     if (digit == "0")
     {
         g.setColour(Theme::countdown);
-        digit = "GO!";
+        digit = I18n::get("countdown.go");
     }
     auto bounds = getLocalBounds();
     g.drawText(digit, bounds.removeFromTop(bounds.getHeight() / 2), juce::Justification::centred);
@@ -109,7 +121,7 @@ void SoLyPAudioProcessorEditor::paintPauseOverlay(juce::Graphics& g)
     g.fillRect(getLocalBounds());
     g.setColour(Theme::textPause);
     g.setFont(juce::FontOptions(28.0f));
-    g.drawText("(waiting, not singing)", getLocalBounds(), juce::Justification::centred);
+    g.drawText(I18n::get("pause.text"), getLocalBounds(), juce::Justification::centred);
 
     const auto& song = processor.getCurrentSong();
     if (!song.sections.isEmpty() && processor.getPreLinesOnPause() > 0)
@@ -131,51 +143,6 @@ void SoLyPAudioProcessorEditor::paintPauseOverlay(juce::Graphics& g)
     }
 }
 
-void SoLyPAudioProcessorEditor::paintSaveDialog(juce::Graphics& g)
-{
-    g.setColour(Theme::bgOverlay);
-    g.fillRect(getLocalBounds());
-
-    auto dialogW = juce::jmin(400, getWidth() - 100);
-    auto dialogH = 180;
-    auto dialogArea = juce::Rectangle<int>(
-        (getWidth() - dialogW) / 2,
-        (getHeight() - dialogH) / 2,
-        dialogW,
-        dialogH);
-
-    g.setColour(Theme::bgDialog);
-    g.fillRoundedRectangle(dialogArea.toFloat(), 10.0f);
-    g.setColour(Theme::accentBorder);
-    g.drawRoundedRectangle(dialogArea.toFloat(), 10.0f, 2.0f);
-
-    auto closeArea = dialogArea.removeFromTop(32).removeFromRight(32);
-    g.setColour(Theme::accentClose);
-    g.drawText("×", closeArea, juce::Justification::centred);
-
-    auto inner = dialogArea.reduced(14);
-    int labelH = 18;
-    int fieldH = 26;
-    int gap = 6;
-
-    g.setColour(juce::Colours::white);
-    g.setFont(juce::FontOptions(13.0f));
-    g.drawText("filename", inner.removeFromTop(labelH), juce::Justification::centredLeft);
-    inner.removeFromTop(4);
-    inner.removeFromTop(fieldH);
-    inner.removeFromTop(gap);
-
-    g.setColour(juce::Colours::white);
-    g.setFont(juce::FontOptions(13.0f));
-    g.drawText("song title (optional)", inner.removeFromTop(labelH), juce::Justification::centredLeft);
-    inner.removeFromTop(4);
-    inner.removeFromTop(fieldH);
-    inner.removeFromTop(gap + 4);
-
-    g.setColour(Theme::accentBorder);
-    g.drawRoundedRectangle(inner.removeFromLeft(80).reduced(2).toFloat(), 4.0f, 1.0f);
-}
-
 void SoLyPAudioProcessorEditor::paintError(juce::Graphics& g)
 {
     g.setColour(Theme::textError);
@@ -183,70 +150,9 @@ void SoLyPAudioProcessorEditor::paintError(juce::Graphics& g)
     g.drawText(lastError, getLocalBounds().removeFromBottom(60), juce::Justification::centred);
 }
 
-// ── save dialog ─────────────────────────────────────────────────────────────
+// ── save ────────────────────────────────────────────────────────────────────
 
-void SoLyPAudioProcessorEditor::showSaveDialog()
-{
-    lastError = {};
-    auto text = textEditor->getText();
-    if (text.trim().isEmpty())
-    {
-        lastError = "Text is empty!";
-        repaint();
-        return;
-    }
-
-    Song song = Song::fromText(text);
-    if (!song.validationError.isEmpty())
-    {
-        lastError = song.validationError;
-        repaint();
-        return;
-    }
-
-    if (lastFilename.isEmpty() && !song.sections.isEmpty())
-        lastFilename = juce::File::createLegalFileName(song.sections[0].name);
-
-    filenameField->setText(lastFilename, false);
-    songnameField->setText(lastSongTitle, false);
-
-    textEditor->setVisible(false);
-    saveButton.setVisible(false);
-    backButton.setVisible(false);
-    editModeLoadButton.setVisible(false);
-
-    saveDialogVisible = true;
-    filenameField->setVisible(true);
-    songnameField->setVisible(true);
-    confirmSaveBtn.setVisible(true);
-    cancelSaveBtn.setVisible(true);
-
-    resized();
-    filenameField->grabKeyboardFocus();
-    filenameField->selectAll();
-}
-
-void SoLyPAudioProcessorEditor::hideSaveDialog()
-{
-    saveDialogVisible = false;
-    filenameField->setVisible(false);
-    songnameField->setVisible(false);
-    confirmSaveBtn.setVisible(false);
-    cancelSaveBtn.setVisible(false);
-
-    if (editMode)
-    {
-        textEditor->setVisible(true);
-        saveButton.setVisible(true);
-        backButton.setVisible(true);
-        editModeLoadButton.setVisible(true);
-    }
-
-    resized();
-    grabKeyboardFocus();
-}
-
-void SoLyPAudioProcessorEditor::doSave()
+void SoLyPAudioProcessorEditor::doSave(const juce::String& name, const juce::String& title)
 {
     auto text = textEditor->getText();
     Song song = Song::fromText(text);
@@ -257,13 +163,13 @@ void SoLyPAudioProcessorEditor::doSave()
         return;
     }
 
-    auto name = filenameField->getText().trim();
-    if (name.isEmpty()) name = "untitled";
-    if (!name.endsWith(".json")) name += ".json";
-    lastFilename = name;
+    auto filename = name;
+    if (filename.isEmpty()) filename = "untitled";
+    if (!filename.endsWith(".json")) filename += ".json";
+    lastFilename = filename;
 
-    auto title = songnameField->getText().trim();
     lastSongTitle = title;
+    song.fileTitle = title;
 
     auto jsonText = song.toJson();
 
@@ -279,14 +185,14 @@ void SoLyPAudioProcessorEditor::doSave()
 
     auto dir = juce::File(getDefaultSongDir());
     dir.createDirectory();
-    auto file = dir.getChildFile(name);
+    auto file = dir.getChildFile(filename);
 
     if (file.existsAsFile())
     {
         juce::NativeMessageBox::showOkCancelBox(
             juce::MessageBoxIconType::WarningIcon,
-            "Overwrite?",
-            "File \"" + name + "\" already exists.\nOverwrite?",
+            I18n::get("overwrite.title"),
+            I18n::get("overwrite.message").replace("{name}", filename),
             this,
             juce::ModalCallbackFunction::create([this, file, jsonText, song](int result) mutable
             {
@@ -310,7 +216,7 @@ void SoLyPAudioProcessorEditor::loadSongFromFile()
     auto dir = juce::File(getDefaultSongDir());
     dir.createDirectory();
 
-    auto chooser = std::make_shared<juce::FileChooser>("Load song JSON", dir, "*.json");
+    auto chooser = std::make_shared<juce::FileChooser>(I18n::get("load.title"), dir, "*.json");
     chooser->launchAsync(
         juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
         [this, chooser](const juce::FileChooser&)
@@ -325,6 +231,8 @@ void SoLyPAudioProcessorEditor::loadSongFromFile()
                 repaint();
                 return;
             }
+            if (song.fileTitle.isEmpty())
+                song.fileTitle = file.getFileNameWithoutExtension();
             processor.loadSong(song);
             if (editMode) exitEditMode();
         });

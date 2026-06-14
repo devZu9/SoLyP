@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.24)
-project(SoLyP VERSION 1.0.1 LANGUAGES CXX)
+project(SoLyP VERSION 1.0.2 LANGUAGES CXX)
 
 cmake_policy(SET CMP0169 OLD)
 
@@ -20,9 +20,12 @@ set(SoLyP_SOURCES
     Source/PluginEditorHelpers.cpp
     Source/Data/Song.cpp
     Source/Data/SettingsManager.cpp
+    Source/Data/I18n.cpp
     Source/Midi/MidiManager.cpp
     Source/UI/ControlsPanel.cpp
     Source/UI/LeftPanel.cpp
+    Source/UI/SaveDialogComponent.cpp
+    Source/UI/Theme.cpp
 )
 
 juce_add_plugin(SoLyP
@@ -57,8 +60,14 @@ if(WIN32)
     target_sources(SoLyP_Standalone PRIVATE "${ICON_RC_PATH}")
 endif()
 
+# copy lang and theme files to build output
+file(COPY ${CMAKE_SOURCE_DIR}/langs/ DESTINATION ${CMAKE_BINARY_DIR}/langs)
+file(COPY ${CMAKE_SOURCE_DIR}/langs/ DESTINATION ${CMAKE_BINARY_DIR}/SoLyP_artefacts/Debug/Standalone/langs)
+file(COPY ${CMAKE_SOURCE_DIR}/Documents/SoLyP/themes/ DESTINATION ${CMAKE_BINARY_DIR}/themes)
+file(COPY ${CMAKE_SOURCE_DIR}/Documents/SoLyP/themes/ DESTINATION ${CMAKE_BINARY_DIR}/SoLyP_artefacts/Debug/Standalone/themes)
+
 if(MSVC)
-    target_compile_options(SoLyP PRIVATE /W4)
+    target_compile_options(SoLyP PRIVATE /W4 /utf-8)
 else()
     target_compile_options(SoLyP PRIVATE -Wall -Wextra)
 endif()

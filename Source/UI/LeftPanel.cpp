@@ -1,9 +1,27 @@
 #include "LeftPanel.h"
 #include "icons/Icons.h"
 #include "Theme.h"
+#include "../Data/I18n.h"
+
+namespace
+{
+    int calcBtnWidth(int chars)
+    {
+        static const int cw = []{
+            juce::Font f(juce::FontOptions(13.0f));
+            juce::GlyphArrangement ga;
+            ga.addLineOfText(f, "W", 0.0f, 0.0f);
+            return juce::roundToInt(ga.getBoundingBox(0, 1, false).getWidth());
+        }();
+        return chars * cw + 20;
+    }
+}
 
 LeftPanel::LeftPanel()
 {
+    editButton.setButtonText(I18n::get("button.edit"));
+    loadButton.setButtonText(I18n::get("button.load"));
+
     // panel icon (squares-four)
     auto panelSvg = juce::String(Icons::squaresFour).replace("#000000", "#" + Theme::iconPrimary.toDisplayString(false));
     auto panelXml = juce::XmlDocument::parse(panelSvg);
@@ -73,13 +91,27 @@ void LeftPanel::resized()
 {
     if (!hovered) return;
 
-    auto inner = getLocalBounds().reduced(10, 12);
+    auto bounds = getLocalBounds().reduced(10, 12).toFloat();
 
-    loadButton.setBounds(inner.removeFromLeft(66));
-    inner.removeFromLeft(8);
-    editButton.setBounds(inner.removeFromLeft(66));
-    inner.removeFromLeft(8);
-    settingsBtn.setBounds(inner.removeFromLeft(28));
+    float wLoad = (float)calcBtnWidth(juce::String(I18n::get("button.load")).length());
+    float wEdit = (float)calcBtnWidth(juce::String(I18n::get("button.edit")).length());
+
+    juce::FlexBox fb;
+    fb.flexDirection = juce::FlexBox::Direction::row;
+    fb.justifyContent = juce::FlexBox::JustifyContent::flexStart;
+    fb.items.add(juce::FlexItem(loadButton).withWidth(wLoad));
+    fb.items.add(juce::FlexItem(8.0f, 1.0f));
+    fb.items.add(juce::FlexItem(editButton).withWidth(wEdit));
+    fb.items.add(juce::FlexItem(6.0f, 1.0f));
+    fb.items.add(juce::FlexItem(settingsBtn).withWidth(28.0f));
+    fb.performLayout(bounds);
+}
+
+int LeftPanel::getRequiredWidth() const
+{
+    int wLoad = calcBtnWidth(juce::String(I18n::get("button.load")).length());
+    int wEdit = calcBtnWidth(juce::String(I18n::get("button.edit")).length());
+    return 10 + wLoad + 8 + wEdit + 6 + 28 + 10;
 }
 
 void LeftPanel::mouseEnter(const juce::MouseEvent& e)

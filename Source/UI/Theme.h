@@ -4,45 +4,39 @@
 
 namespace Theme
 {
-    // background
-    inline const auto bgMain        = juce::Colour(0xFF1A1A2E);
-    inline const auto bgPanel       = juce::Colour(0xFF13294B);
-    inline const auto bgButton      = juce::Colour(0xFF1A2A4A);
-    inline const auto bgButtonHover = juce::Colour(0x221A2A4A);
-    inline const auto bgDialog      = juce::Colour(0xFF2A2A4A);
-    inline const auto bgOverlay     = juce::Colour(0xAA000000);
+    inline juce::Colour bgMain;
+    inline juce::Colour bgPanel;
+    inline juce::Colour bgButton;
+    inline juce::Colour bgButtonHover;
+    inline juce::Colour bgDialog;
+    inline juce::Colour bgOverlay;
 
-    // text
-    inline const auto textPrimary   = juce::Colour(0xFFE0EDFF);
-    inline const auto textHint      = juce::Colours::grey;
-    inline const auto textOnButton  = juce::Colours::white;
-    inline const auto textActiveLine = juce::Colour(0xFFF0C040);
-    inline const auto textPause     = juce::Colour(0xFFFFCC00);
-    inline const auto textError     = juce::Colour(0xCCFF0000);
+    inline juce::Colour textPrimary;
+    inline juce::Colour textHint;
+    inline juce::Colour textOnButton;
+    inline juce::Colour textActiveLine;
+    inline juce::Colour textPause;
+    inline juce::Colour textError;
+    inline juce::Colour textStatusBar;
 
-    // status bar
-    inline const auto textStatusBar = juce::Colours::white.withAlpha(0.3f);
+    inline juce::Colour accentBorder;
+    inline juce::Colour accentClose;
 
-    // dialogs
-    inline const auto accentBorder  = juce::Colour(0xFF4444AA);
-    inline const auto accentClose   = juce::Colour(0xFF6666CC);
+    inline juce::Colour sliderTrack;
+    inline juce::Colour sliderThumb;
 
-    // sliders
-    inline const auto sliderTrack   = juce::Colour(0xFF4A6FA5);
-    inline const auto sliderThumb   = juce::Colour(0xFFA0C4FF);
+    inline juce::Colour countdown;
 
-    // countdown
-    inline const auto countdown     = juce::Colour(0xFF44FF44);
+    inline juce::Colour iconPrimary;
+    inline juce::Colour iconHover;
 
-    // icons
-    inline const auto iconPrimary   = juce::Colour(0xFFE0EDFF);
-    inline const auto iconHover     = juce::Colour(0xFFF0C040);
+    inline juce::Colour editorBg;
+    inline juce::Colour editorText;
+    inline juce::Colour editorCaret;
+    inline juce::Colour editorHighlight;
+    inline juce::Colour editorHighlightedText;
+    inline juce::Colour editorOutline;
 
-    // text editor
-    inline const auto editorBg             = juce::Colour(0xFF13294B);
-    inline const auto editorText           = juce::Colour(0xFFE0EDFF);
-    inline const auto editorCaret          = juce::Colour(0xFFE0EDFF);
-    inline const auto editorHighlight      = juce::Colour(0xFF1A2A4A);
-    inline const auto editorHighlightedText = juce::Colours::white;
-    inline const auto editorOutline        = juce::Colours::transparentBlack;
+    void loadFromFile(const juce::File& file);
+    void ensureDefaults();
 }

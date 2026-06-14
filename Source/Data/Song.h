@@ -18,6 +18,7 @@ struct Song
 {
     juce::Array<Section> sections;
     juce::Array<LegendEntry> legends;
+    juce::String fileTitle;
     int preLinesOnPause = -1;
 
     static Song fromJson(const juce::String& jsonText);

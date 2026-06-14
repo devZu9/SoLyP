@@ -1,6 +1,7 @@
 #include "ControlsPanel.h"
 #include "icons/Icons.h"
 #include "Theme.h"
+#include "../Data/I18n.h"
 
 ControlsPanel::ControlsPanel()
 {
@@ -51,14 +52,14 @@ void ControlsPanel::paint(juce::Graphics& g)
         auto row1 = inner.removeFromTop(rowH);
         g.setColour(Theme::iconPrimary);
         g.setFont(juce::FontOptions(13.0f));
-        g.drawText("Lines:", row1.removeFromLeft(labelW), juce::Justification::centredLeft);
+        g.drawText(I18n::get("panel.lines"), row1.removeFromLeft(labelW), juce::Justification::centredLeft);
 
         inner.removeFromTop(rowGap);
 
         auto row2 = inner.removeFromTop(rowH);
         g.setColour(Theme::iconPrimary);
         g.setFont(juce::FontOptions(13.0f));
-        g.drawText("Size:", row2.removeFromLeft(labelW), juce::Justification::centredLeft);
+        g.drawText(I18n::get("panel.size"), row2.removeFromLeft(labelW), juce::Justification::centredLeft);
     }
     else
     {

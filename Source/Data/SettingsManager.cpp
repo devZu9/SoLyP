@@ -28,6 +28,9 @@ Settings SettingsManager::load()
     if (obj->hasProperty("fontSize"))
         s.fontSize = static_cast<float>(obj->getProperty("fontSize"));
 
+    if (obj->hasProperty("language"))
+        s.language = obj->getProperty("language").toString();
+
     return s;
 }
 
@@ -36,6 +39,7 @@ void SettingsManager::save(const Settings& s)
     auto obj = std::make_unique<juce::DynamicObject>();
     obj->setProperty("visibleLines", s.visibleLines);
     obj->setProperty("fontSize", s.fontSize);
+    obj->setProperty("language", s.language);
 
     auto json = juce::JSON::toString(juce::var(obj.release()), false);
 

@@ -1,7 +1,9 @@
 #include "PluginEditor.h"
 #include "PluginEditorHelpers.h"
 #include "UI/Theme.h"
+#include "UI/SaveDialogComponent.h"
 #include "Data/SettingsManager.h"
+#include "Data/I18n.h"
 
 namespace
 {
@@ -14,6 +16,15 @@ namespace
 SoLyPAudioProcessorEditor::SoLyPAudioProcessorEditor(SoLyPAudioProcessor& p)
     : AudioProcessorEditor(&p), processor(p)
 {
+    // load theme first — all Theme:: colours must be set before any widget is created
+    auto themeDir = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory)
+        .getChildFile("SoLyP").getChildFile("themes");
+    Theme::loadFromFile(themeDir.getChildFile("dark.json"));
+
+    // load settings and language
+    auto settings = SettingsManager::load();
+    I18n::setLanguage(settings.language);
+
     ensureSongsDir();
 
     setSize(800, 500);
@@ -45,6 +56,10 @@ SoLyPAudioProcessorEditor::SoLyPAudioProcessorEditor(SoLyPAudioProcessor& p)
         btn.setColour(juce::TextButton::textColourOnId, Theme::textOnButton);
     };
 
+    saveButton.setButtonText(I18n::get("button.save"));
+    backButton.setButtonText(I18n::get("button.back"));
+    editModeLoadButton.setButtonText(I18n::get("button.load"));
+
     saveButton.setVisible(false);
     backButton.setVisible(false);
     editModeLoadButton.setVisible(false);
@@ -58,31 +73,11 @@ SoLyPAudioProcessorEditor::SoLyPAudioProcessorEditor(SoLyPAudioProcessor& p)
     backButton.addListener(this);
     editModeLoadButton.addListener(this);
 
-    // save dialog
-    filenameField = std::make_unique<juce::TextEditor>();
-    filenameField->setFont(juce::Font(juce::FontOptions(16.0f)));
-    filenameField->setTextToShowWhenEmpty("filename (e.g. my_song)", Theme::textHint);
-    filenameField->setVisible(false);
-    addAndMakeVisible(filenameField.get());
-
-    songnameField = std::make_unique<juce::TextEditor>();
-    songnameField->setFont(juce::Font(juce::FontOptions(16.0f)));
-    songnameField->setTextToShowWhenEmpty("song title (optional)", Theme::textHint);
-    songnameField->setVisible(false);
-    addAndMakeVisible(songnameField.get());
-
-    confirmSaveBtn.setVisible(false);
-    cancelSaveBtn.setVisible(false);
-    addAndMakeVisible(confirmSaveBtn);
-    addAndMakeVisible(cancelSaveBtn);
-    confirmSaveBtn.addListener(this);
-    cancelSaveBtn.addListener(this);
-
     // left panel
     leftPanel = std::make_unique<LeftPanel>();
     leftPanel->editButton.addListener(this);
     leftPanel->loadButton.addListener(this);
-    leftPanel->setBounds(8, 8, LeftPanel::compWidth, LeftPanel::compHeight);
+    leftPanel->setBounds(8, 8, leftPanel->getRequiredWidth(), LeftPanel::compHeight);
     addAndMakeVisible(leftPanel.get());
 
     // controls panel
@@ -94,7 +89,6 @@ SoLyPAudioProcessorEditor::SoLyPAudioProcessorEditor(SoLyPAudioProcessor& p)
     addAndMakeVisible(controlsPanel.get());
 
     // load saved settings
-    auto settings = SettingsManager::load();
     visibleLines = settings.visibleLines;
     fontSize = settings.fontSize;
     controlsPanel->linesSlider.setValue(visibleLines);
@@ -108,13 +102,8 @@ SoLyPAudioProcessorEditor::~SoLyPAudioProcessorEditor()
     processor.onStateChanged = nullptr;
 }
 
-bool SoLyPAudioProcessorEditor::keyPressed(const juce::KeyPress& key)
+bool SoLyPAudioProcessorEditor::keyPressed(const juce::KeyPress&)
 {
-    if (saveDialogVisible && key == juce::KeyPress::escapeKey)
-    {
-        hideSaveDialog();
-        return true;
-    }
     return false;
 }
 
@@ -154,10 +143,6 @@ void SoLyPAudioProcessorEditor::buttonClicked(juce::Button* btn)
     {
         leftPanel->setHovered(false);
     }
-    else if (btn == &confirmSaveBtn)
-        doSave();
-    else if (btn == &cancelSaveBtn)
-        hideSaveDialog();
 }
 
 void SoLyPAudioProcessorEditor::sliderValueChanged(juce::Slider* slider)
@@ -184,10 +169,7 @@ void SoLyPAudioProcessorEditor::paint(juce::Graphics& g)
     g.fillAll(Theme::bgMain);
 
     if (editMode)
-    {
-        if (saveDialogVisible) { paintSaveDialog(g); }
         return;
-    }
 
     auto state = processor.getTransportState();
     if (state == SoLyPAudioProcessor::TransportState::Countdown)
@@ -202,48 +184,21 @@ void SoLyPAudioProcessorEditor::paint(juce::Graphics& g)
         paintError(g);
 }
 
+void SoLyPAudioProcessorEditor::paintOverChildren(juce::Graphics&)
+{
+}
+
 // ── resized ─────────────────────────────────────────────────────────────────
 
 void SoLyPAudioProcessorEditor::resized()
 {
     if (editMode)
     {
-        if (saveDialogVisible)
-        {
-            auto dialogW = juce::jmin(400, getWidth() - 100);
-            auto dialogH = 180;
-            auto dialogArea = juce::Rectangle<int>(
-                (getWidth() - dialogW) / 2,
-                (getHeight() - dialogH) / 2,
-                dialogW,
-                dialogH);
-
-            auto inner = dialogArea.reduced(14);
-            inner.removeFromTop(32);
-            int labelH = 18;
-            int fieldH = 26;
-            int gap = 6;
-
-            inner.removeFromTop(labelH);
-            inner.removeFromTop(4);
-            filenameField->setBounds(inner.removeFromTop(fieldH));
-            inner.removeFromTop(gap);
-
-            inner.removeFromTop(labelH);
-            inner.removeFromTop(4);
-            songnameField->setBounds(inner.removeFromTop(fieldH));
-            inner.removeFromTop(gap + 4);
-
-            confirmSaveBtn.setBounds(inner.removeFromLeft(80).reduced(2));
-            cancelSaveBtn.setBounds(inner.removeFromLeft(80).reduced(2));
-            return;
-        }
-
         auto area = getLocalBounds().reduced(10);
-        auto buttonBar = area.removeFromBottom(40);
-        saveButton.setBounds(buttonBar.removeFromLeft(100).reduced(4));
+        auto buttonBar = area.removeFromTop(40);
         backButton.setBounds(buttonBar.removeFromLeft(100).reduced(4));
         editModeLoadButton.setBounds(buttonBar.removeFromLeft(100).reduced(4));
+        saveButton.setBounds(buttonBar.removeFromLeft(100).reduced(4));
         textEditor->setBounds(area);
         return;
     }
@@ -251,7 +206,7 @@ void SoLyPAudioProcessorEditor::resized()
     repaint();
 
     if (leftPanel != nullptr)
-        leftPanel->setBounds(8, 8, LeftPanel::compWidth, LeftPanel::compHeight);
+        leftPanel->setBounds(8, 8, leftPanel->getRequiredWidth(), LeftPanel::compHeight);
 
     if (controlsPanel != nullptr)
         controlsPanel->setBounds(getWidth() - ControlsPanel::compWidth - 8, 8,
@@ -259,24 +214,8 @@ void SoLyPAudioProcessorEditor::resized()
     repaint();
 }
 
-void SoLyPAudioProcessorEditor::mouseDown(const juce::MouseEvent& e)
+void SoLyPAudioProcessorEditor::mouseDown(const juce::MouseEvent&)
 {
-    if (saveDialogVisible)
-    {
-        auto dialogW = juce::jmin(400, getWidth() - 100);
-        auto dialogH = 180;
-        auto dialogArea = juce::Rectangle<int>(
-            (getWidth() - dialogW) / 2,
-            (getHeight() - dialogH) / 2,
-            dialogW,
-            dialogH);
-        auto closeArea = dialogArea.removeFromTop(32).removeFromRight(32);
-        if (closeArea.contains(e.getPosition()))
-        {
-            hideSaveDialog();
-            return;
-        }
-    }
 }
 
 // ── edit mode ───────────────────────────────────────────────────────────────
@@ -289,7 +228,7 @@ void SoLyPAudioProcessorEditor::enterEditMode()
 
     const auto& song = processor.getCurrentSong();
     if (song.sections.isEmpty())
-        textEditor->setText("[Verse 1]\nType your\nlyrics here\n\n[Chorus]\nAnd here\n");
+        textEditor->setText(I18n::get("editor.placeholder"));
     else
         textEditor->setText(songToText(song));
 
@@ -303,7 +242,6 @@ void SoLyPAudioProcessorEditor::enterEditMode()
 
 void SoLyPAudioProcessorEditor::exitEditMode()
 {
-    hideSaveDialog();
     editMode = false;
     if (leftPanel != nullptr) leftPanel->setVisible(true);
     if (controlsPanel != nullptr) controlsPanel->setVisible(true);
@@ -313,4 +251,46 @@ void SoLyPAudioProcessorEditor::exitEditMode()
     editModeLoadButton.setVisible(false);
     resized();
     grabKeyboardFocus();
+}
+
+// ── save dialog ─────────────────────────────────────────────────────────────
+
+void SoLyPAudioProcessorEditor::showSaveDialog()
+{
+    lastError = {};
+    auto text = textEditor->getText();
+    if (text.trim().isEmpty())
+    {
+        lastError = I18n::get("error.empty");
+        repaint();
+        return;
+    }
+
+    Song song = Song::fromText(text);
+    if (!song.validationError.isEmpty())
+    {
+        lastError = song.validationError;
+        repaint();
+        return;
+    }
+
+    if (lastFilename.isEmpty() && !song.sections.isEmpty())
+        lastFilename = juce::File::createLegalFileName(song.sections[0].name);
+
+    auto* dialog = new SaveDialogComponent(
+        lastFilename,
+        lastSongTitle,
+        [this](const juce::String& name, const juce::String& title) {
+            doSave(name, title);
+        },
+        []() {}
+    );
+    addAndMakeVisible(dialog);
+    dialog->setBounds(getLocalBounds());
+    dialog->activateModal([this, dialog] {
+        juce::MessageManager::callAsync([this, dialog] {
+            removeChildComponent(dialog);
+            delete dialog;
+        });
+    });
 }

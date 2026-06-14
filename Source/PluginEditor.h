@@ -15,6 +15,7 @@ public:
     ~SoLyPAudioProcessorEditor() override;
 
     void paint(juce::Graphics&) override;
+    void paintOverChildren(juce::Graphics&) override;
     void resized() override;
     bool keyPressed(const juce::KeyPress&) override;
     void mouseDown(const juce::MouseEvent&) override;
@@ -30,14 +31,13 @@ private:
     void paintCountdown(juce::Graphics& g);
     void paintPauseOverlay(juce::Graphics& g);
     void paintError(juce::Graphics& g);
-    void paintSaveDialog(juce::Graphics& g);
+
+    void showSaveDialog();
+    void doSave(const juce::String& filename, const juce::String& songTitle);
+    void loadSongFromFile();
 
     void enterEditMode();
     void exitEditMode();
-    void showSaveDialog();
-    void hideSaveDialog();
-    void doSave();
-    void loadSongFromFile();
 
     SoLyPAudioProcessor& processor;
 
@@ -49,18 +49,13 @@ private:
     // edit mode
     bool editMode = false;
     std::unique_ptr<juce::TextEditor> textEditor;
-    juce::TextButton saveButton{ "Save" };
-    juce::TextButton backButton{ "Back" };
-    juce::TextButton editModeLoadButton{ "Load" };
+    juce::TextButton saveButton{ "" };
+    juce::TextButton backButton{ "" };
+    juce::TextButton editModeLoadButton{ "" };
 
-    // save dialog fields
-    bool saveDialogVisible = false;
+    // save dialog data (persisted between invocations)
     juce::String lastFilename;
     juce::String lastSongTitle;
-    std::unique_ptr<juce::TextEditor> filenameField;
-    std::unique_ptr<juce::TextEditor> songnameField;
-    juce::TextButton confirmSaveBtn{ "Save" };
-    juce::TextButton cancelSaveBtn{ "Cancel" };
 
     // left panel
     std::unique_ptr<LeftPanel> leftPanel;

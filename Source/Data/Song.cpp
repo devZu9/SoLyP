@@ -59,6 +59,9 @@ Song Song::fromJson(const juce::String& jsonText)
         }
     }
 
+    if (root->hasProperty("title"))
+        song.fileTitle = root->getProperty("title").toString();
+
     auto settings = root->getProperty("settings");
     if (settings.isObject())
     {
