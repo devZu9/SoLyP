@@ -39,10 +39,10 @@ namespace Theme
     inline const auto iconHover     = juce::Colour(0xFFF0C040);
 
     // text editor
-    inline const auto editorBg      = bgPanel;
-    inline const auto editorText    = textPrimary;
-    inline const auto editorCaret   = textPrimary;
-    inline const auto editorHighlight = bgButton;
-    inline const auto editorHighlightedText = textOnButton;
-    inline const auto editorOutline  = juce::Colours::transparentBlack;
+    inline const auto editorBg             = juce::Colour(0xFF13294B);
+    inline const auto editorText           = juce::Colour(0xFFE0EDFF);
+    inline const auto editorCaret          = juce::Colour(0xFFE0EDFF);
+    inline const auto editorHighlight      = juce::Colour(0xFF1A2A4A);
+    inline const auto editorHighlightedText = juce::Colours::white;
+    inline const auto editorOutline        = juce::Colours::transparentBlack;
 }
