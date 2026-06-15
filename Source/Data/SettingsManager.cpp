@@ -47,6 +47,10 @@ Settings SettingsManager::load()
     s.triggerCountdown5 = g("triggerCountdown5", 9);
     s.manualBpmEnabled = g("manualBpmEnabled", false);
     s.manualBpmValue = g("manualBpmValue", 120.0f);
+    s.windowWidth = g("windowWidth", 0);
+    s.windowHeight = g("windowHeight", 0);
+    s.windowX = g("windowX", 0);
+    s.windowY = g("windowY", 0);
 
     return s;
 }
@@ -73,6 +77,10 @@ void SettingsManager::save(const Settings& s)
     obj->setProperty("triggerCountdown5", s.triggerCountdown5);
     obj->setProperty("manualBpmEnabled", s.manualBpmEnabled);
     obj->setProperty("manualBpmValue", s.manualBpmValue);
+    obj->setProperty("windowWidth", s.windowWidth);
+    obj->setProperty("windowHeight", s.windowHeight);
+    obj->setProperty("windowX", s.windowX);
+    obj->setProperty("windowY", s.windowY);
 
     auto json = juce::JSON::toString(juce::var(obj.release()), false);
 

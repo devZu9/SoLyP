@@ -97,6 +97,7 @@ void ControlsPanel::resized()
 
 void ControlsPanel::mouseEnter(const juce::MouseEvent& e)
 {
+    toFront(false);
     if (getIconRect().contains(e.getPosition()))
         setHovered(true);
 }

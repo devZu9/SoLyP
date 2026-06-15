@@ -25,6 +25,7 @@ set(SoLyP_SOURCES
     Source/UI/ControlsPanel.cpp
     Source/UI/LeftPanel.cpp
     Source/UI/SaveDialogComponent.cpp
+    Source/UI/SettingsCard.cpp
     Source/UI/SettingsComponent.cpp
     Source/UI/Theme.cpp
 )

@@ -111,11 +111,12 @@ int LeftPanel::getRequiredWidth() const
 {
     int wLoad = calcBtnWidth(juce::String(I18n::get("button.load")).length());
     int wEdit = calcBtnWidth(juce::String(I18n::get("button.edit")).length());
-    return 10 + wLoad + 8 + wEdit + 6 + 28 + 10;
+    return 10 + wLoad + 8 + wEdit + 6 + 28 + 10 + 8;
 }
 
 void LeftPanel::mouseEnter(const juce::MouseEvent& e)
 {
+    toFront(false);
     if (getIconRect().contains(e.getPosition()))
         setHovered(true);
 }

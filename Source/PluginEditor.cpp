@@ -32,6 +32,21 @@ SoLyPAudioProcessorEditor::SoLyPAudioProcessorEditor(SoLyPAudioProcessor& p)
     setSize(800, 500);
     setResizable(true, false);
     setConstrainer(nullptr);
+
+    // apply saved window size
+    if (settings.windowWidth > 0 && settings.windowHeight > 0)
+        setSize(settings.windowWidth, settings.windowHeight);
+
+    // apply saved window position (Standalone only)
+    if (processor.wrapperType == juce::AudioProcessor::wrapperType_Standalone)
+    {
+        if (settings.windowX != 0 || settings.windowY != 0)
+        {
+            auto* resizable = dynamic_cast<juce::ResizableWindow*>(getTopLevelComponent());
+            if (resizable != nullptr)
+                resizable->setTopLeftPosition(settings.windowX, settings.windowY);
+        }
+    }
     setAlwaysOnTop(true);
     setMouseClickGrabsKeyboardFocus(false);
     setWantsKeyboardFocus(true);
@@ -122,6 +137,24 @@ SoLyPAudioProcessorEditor::~SoLyPAudioProcessorEditor()
     processor.onStateChanged = nullptr;
 }
 
+void SoLyPAudioProcessorEditor::moved()
+{
+    if (processor.wrapperType == juce::AudioProcessor::wrapperType_Standalone)
+    {
+        auto top = getTopLevelComponent();
+        if (top != nullptr)
+        {
+            auto pos = top->getScreenPosition();
+            auto ws = SettingsManager::load();
+            ws.windowX = pos.x;
+            ws.windowY = pos.y;
+            ws.windowWidth = getWidth();
+            ws.windowHeight = getHeight();
+            SettingsManager::save(ws);
+        }
+    }
+}
+
 bool SoLyPAudioProcessorEditor::keyPressed(const juce::KeyPress&)
 {
     return false;
@@ -131,7 +164,13 @@ void SoLyPAudioProcessorEditor::timerCallback()
 {
     if (editMode) return;
     if (processor.getTransportState() == SoLyPAudioProcessor::TransportState::Countdown)
-        repaint();
+    repaint();
+
+    // persist window size
+    auto ws = SettingsManager::load();
+    ws.windowWidth = getWidth();
+    ws.windowHeight = getHeight();
+    SettingsManager::save(ws);
 }
 
 void SoLyPAudioProcessorEditor::mouseMove(const juce::MouseEvent& e)

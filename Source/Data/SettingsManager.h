@@ -32,6 +32,12 @@ struct Settings
     // sync
     bool manualBpmEnabled = false;
     float manualBpmValue = 120.0f;
+
+    // window
+    int windowWidth = 0;
+    int windowHeight = 0;
+    int windowX = 0;
+    int windowY = 0;
 };
 
 namespace SettingsManager
