@@ -21,7 +21,7 @@ void Theme::loadFromFile(const juce::File& file)
     LOAD_COLOUR(bgMain, juce::Colour(0xFF1A1A2E))
     LOAD_COLOUR(bgPanel, juce::Colour(0xFF13294B))
     LOAD_COLOUR(bgButton, juce::Colour(0xFF1A2A4A))
-    LOAD_COLOUR(bgButtonHover, juce::Colour(0x221A2A4A))
+    LOAD_COLOUR(bgButtonHover, juce::Colour(0x881A2A4A))
     LOAD_COLOUR(bgDialog, juce::Colour(0xFF2A2A4A))
     LOAD_COLOUR(bgOverlay, juce::Colour(0xAA000000))
 
@@ -57,7 +57,7 @@ void Theme::ensureDefaults()
     bgMain = juce::Colour(0xFF1A1A2E);
     bgPanel = juce::Colour(0xFF13294B);
     bgButton = juce::Colour(0xFF1A2A4A);
-    bgButtonHover = juce::Colour(0x221A2A4A);
+    bgButtonHover = juce::Colour(0x881A2A4A);
     bgDialog = juce::Colour(0xFF2A2A4A);
     bgOverlay = juce::Colour(0xAA000000);
 

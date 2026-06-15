@@ -1,7 +1,9 @@
 #include "PluginEditor.h"
 #include "PluginEditorHelpers.h"
 #include "UI/Theme.h"
+#include "UI/SettingsComponent.h"
 #include "UI/SaveDialogComponent.h"
+#include "UI/icons/Icons.h"
 #include "Data/SettingsManager.h"
 #include "Data/I18n.h"
 
@@ -73,10 +75,25 @@ SoLyPAudioProcessorEditor::SoLyPAudioProcessorEditor(SoLyPAudioProcessor& p)
     backButton.addListener(this);
     editModeLoadButton.addListener(this);
 
+    // settings button in editor (gear icon)
+    auto gearSvg = juce::String(Icons::gear).replace("#000000", "#" + Theme::iconPrimary.toDisplayString(false));
+    auto gearXml = juce::XmlDocument::parse(gearSvg);
+    if (gearXml != nullptr)
+    {
+        auto gearDrawable = juce::Drawable::createFromSVG(*gearXml);
+        settingsEditBtn.setImages(gearDrawable.get());
+    }
+    settingsEditBtn.setColour(juce::DrawableButton::backgroundColourId, juce::Colours::transparentBlack);
+    settingsEditBtn.setColour(juce::DrawableButton::backgroundOnColourId, Theme::bgButtonHover);
+    settingsEditBtn.setVisible(false);
+    settingsEditBtn.addListener(this);
+    addAndMakeVisible(settingsEditBtn);
+
     // left panel
     leftPanel = std::make_unique<LeftPanel>();
     leftPanel->editButton.addListener(this);
     leftPanel->loadButton.addListener(this);
+    leftPanel->settingsBtn.addListener(this);
     leftPanel->setBounds(8, 8, leftPanel->getRequiredWidth(), LeftPanel::compHeight);
     addAndMakeVisible(leftPanel.get());
 
@@ -126,7 +143,12 @@ void SoLyPAudioProcessorEditor::buttonClicked(juce::Button* btn)
     if (btn == &saveButton)
         showSaveDialog();
     else if (btn == &backButton)
-        exitEditMode();
+    {
+        if (settingsMode)
+            exitSettingsMode();
+        else
+            exitEditMode();
+    }
     else if (btn == &editModeLoadButton)
         loadSongFromFile();
     else if (btn == &leftPanel->editButton)
@@ -142,6 +164,11 @@ void SoLyPAudioProcessorEditor::buttonClicked(juce::Button* btn)
     else if (btn == &leftPanel->settingsBtn)
     {
         leftPanel->setHovered(false);
+        enterSettingsMode();
+    }
+    else if (btn == &settingsEditBtn)
+    {
+        enterSettingsMode();
     }
 }
 
@@ -168,7 +195,7 @@ void SoLyPAudioProcessorEditor::paint(juce::Graphics& g)
 {
     g.fillAll(Theme::bgMain);
 
-    if (editMode)
+    if (settingsMode || editMode)
         return;
 
     auto state = processor.getTransportState();
@@ -192,6 +219,13 @@ void SoLyPAudioProcessorEditor::paintOverChildren(juce::Graphics&)
 
 void SoLyPAudioProcessorEditor::resized()
 {
+    if (settingsMode)
+    {
+        if (settingsComponent != nullptr)
+            settingsComponent->setBounds(getLocalBounds());
+        return;
+    }
+
     if (editMode)
     {
         auto area = getLocalBounds().reduced(10);
@@ -199,6 +233,11 @@ void SoLyPAudioProcessorEditor::resized()
         backButton.setBounds(buttonBar.removeFromLeft(100).reduced(4));
         editModeLoadButton.setBounds(buttonBar.removeFromLeft(100).reduced(4));
         saveButton.setBounds(buttonBar.removeFromLeft(100).reduced(4));
+        // gear button — right-aligned
+        int gs = 28;
+        settingsEditBtn.setBounds(buttonBar.getRight() - gs - 4,
+                                  buttonBar.getY() + (buttonBar.getHeight() - gs) / 2,
+                                  gs, gs);
         textEditor->setBounds(area);
         return;
     }
@@ -236,6 +275,7 @@ void SoLyPAudioProcessorEditor::enterEditMode()
     saveButton.setVisible(true);
     backButton.setVisible(true);
     editModeLoadButton.setVisible(true);
+    settingsEditBtn.setVisible(true);
     resized();
     textEditor->grabKeyboardFocus();
 }
@@ -249,8 +289,49 @@ void SoLyPAudioProcessorEditor::exitEditMode()
     saveButton.setVisible(false);
     backButton.setVisible(false);
     editModeLoadButton.setVisible(false);
+    settingsEditBtn.setVisible(false);
     resized();
     grabKeyboardFocus();
+}
+
+// ── settings mode ───────────────────────────────────────────────────────────
+
+void SoLyPAudioProcessorEditor::enterSettingsMode()
+{
+    settingsMode = true;
+
+    if (editMode)
+    {
+        editMode = false;
+        textEditor->setVisible(false);
+        saveButton.setVisible(false);
+        backButton.setVisible(false);
+        editModeLoadButton.setVisible(false);
+        settingsEditBtn.setVisible(false);
+    }
+    else
+    {
+        if (leftPanel != nullptr) leftPanel->setVisible(false);
+        if (controlsPanel != nullptr) controlsPanel->setVisible(false);
+    }
+
+    // show back button for returning from settings
+    backButton.setButtonText(I18n::get("button.back"));
+    backButton.setVisible(true);
+
+    settingsComponent = std::make_unique<SettingsComponent>();
+    addAndMakeVisible(settingsComponent.get());
+    resized();
+}
+
+void SoLyPAudioProcessorEditor::exitSettingsMode()
+{
+    settingsMode = false;
+    settingsComponent = nullptr;
+
+    if (leftPanel != nullptr) leftPanel->setVisible(true);
+    if (controlsPanel != nullptr) controlsPanel->setVisible(true);
+    resized();
 }
 
 // ── save dialog ─────────────────────────────────────────────────────────────

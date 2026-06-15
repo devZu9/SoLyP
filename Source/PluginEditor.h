@@ -5,6 +5,8 @@
 #include "UI/ControlsPanel.h"
 #include "UI/LeftPanel.h"
 
+class SettingsComponent;
+
 class SoLyPAudioProcessorEditor : public juce::AudioProcessorEditor,
                                   private juce::Timer,
                                   private juce::Button::Listener,
@@ -38,6 +40,8 @@ private:
 
     void enterEditMode();
     void exitEditMode();
+    void enterSettingsMode();
+    void exitSettingsMode();
 
     SoLyPAudioProcessor& processor;
 
@@ -52,6 +56,11 @@ private:
     juce::TextButton saveButton{ "" };
     juce::TextButton backButton{ "" };
     juce::TextButton editModeLoadButton{ "" };
+
+    // settings mode
+    bool settingsMode = false;
+    std::unique_ptr<SettingsComponent> settingsComponent;
+    juce::DrawableButton settingsEditBtn{ "", juce::DrawableButton::ImageFitted };
 
     // save dialog data (persisted between invocations)
     juce::String lastFilename;

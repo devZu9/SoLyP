@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.24)
-project(SoLyP VERSION 1.0.2 LANGUAGES CXX)
+project(SoLyP VERSION 1.0.3 LANGUAGES CXX)
 
 cmake_policy(SET CMP0169 OLD)
 
@@ -25,6 +25,7 @@ set(SoLyP_SOURCES
     Source/UI/ControlsPanel.cpp
     Source/UI/LeftPanel.cpp
     Source/UI/SaveDialogComponent.cpp
+    Source/UI/SettingsComponent.cpp
     Source/UI/Theme.cpp
 )
 
