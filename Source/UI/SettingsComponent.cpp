@@ -69,7 +69,7 @@ SettingsComponent::SettingsComponent()
     addLabel(c, "settings.language")->setBounds(pad, y, colX - pad, rowH);
     {
         auto* cb = createCombo();
-        cb->addItem("Русский", 1);
+        cb->addItem(juce::String::fromUTF8("Русский"), 1);
         cb->addItem("English", 2);
         cb->setSelectedId(s.language == "en" ? 2 : 1);
         cb->onChange = [cb, this] {

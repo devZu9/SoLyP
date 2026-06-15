@@ -77,11 +77,14 @@ SoLyPAudioProcessorEditor::SoLyPAudioProcessorEditor(SoLyPAudioProcessor& p)
 
     // settings button in editor (gear icon)
     auto gearSvg = juce::String(Icons::gear).replace("#000000", "#" + Theme::iconPrimary.toDisplayString(false));
+    auto gearHoverSvg = juce::String(Icons::gear).replace("#000000", "#" + Theme::iconHover.toDisplayString(false));
     auto gearXml = juce::XmlDocument::parse(gearSvg);
-    if (gearXml != nullptr)
+    auto gearHoverXml = juce::XmlDocument::parse(gearHoverSvg);
+    if (gearXml != nullptr && gearHoverXml != nullptr)
     {
-        auto gearDrawable = juce::Drawable::createFromSVG(*gearXml);
-        settingsEditBtn.setImages(gearDrawable.get());
+        auto gearNormal = juce::Drawable::createFromSVG(*gearXml);
+        auto gearHover  = juce::Drawable::createFromSVG(*gearHoverXml);
+        settingsEditBtn.setImages(gearNormal.get(), gearHover.get());
     }
     settingsEditBtn.setColour(juce::DrawableButton::backgroundColourId, juce::Colours::transparentBlack);
     settingsEditBtn.setColour(juce::DrawableButton::backgroundOnColourId, Theme::bgButtonHover);
@@ -221,8 +224,11 @@ void SoLyPAudioProcessorEditor::resized()
 {
     if (settingsMode)
     {
+        auto area = getLocalBounds().reduced(10);
+        auto buttonBar = area.removeFromTop(40);
+        backButton.setBounds(buttonBar.removeFromLeft(100).reduced(4));
         if (settingsComponent != nullptr)
-            settingsComponent->setBounds(getLocalBounds());
+            settingsComponent->setBounds(area);
         return;
     }
 
@@ -328,6 +334,7 @@ void SoLyPAudioProcessorEditor::exitSettingsMode()
 {
     settingsMode = false;
     settingsComponent = nullptr;
+    backButton.setVisible(false);
 
     if (leftPanel != nullptr) leftPanel->setVisible(true);
     if (controlsPanel != nullptr) controlsPanel->setVisible(true);
