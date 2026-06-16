@@ -17,7 +17,7 @@ namespace
     };
 }
 
-SettingsComponent::SettingsComponent()
+SettingsComponent::SettingsComponent(std::function<void()> onLangChanged)
 {
     auto* container = new juce::Component();
     gridContainer.reset(container);
@@ -33,12 +33,14 @@ SettingsComponent::SettingsComponent()
         auto* langCb = card->addCombo(I18n::get("settings.language"));
         langCb->addItem(juce::String::fromUTF8("Русский"), 1);
         langCb->addItem("English", 2);
-        langCb->setSelectedId(s.language == "en" ? 2 : 1);
-        langCb->onChange = [langCb] {
+        langCb->onChange = [langCb, onLangChanged] {
             auto st = SettingsManager::load();
             st.language = langCb->getSelectedId() == 2 ? "en" : "ru";
             SettingsManager::save(st);
+            I18n::setLanguage(st.language);
+            if (onLangChanged) onLangChanged();
         };
+        langCb->setSelectedId(s.language == "en" ? 2 : 1, juce::dontSendNotification);
 
         // separator before BPM section
         card->addSeparator();

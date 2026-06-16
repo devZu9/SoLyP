@@ -43,6 +43,7 @@ private:
     void exitEditMode();
     void enterSettingsMode();
     void exitSettingsMode();
+    void onLanguageChanged();
 
     SoLyPAudioProcessor& processor;
 
@@ -72,6 +73,8 @@ private:
 
     // controls
     std::unique_ptr<ControlsPanel> controlsPanel;
+
+    bool languageChangeGuard = false;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SoLyPAudioProcessorEditor)
 };

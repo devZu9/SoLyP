@@ -62,5 +62,6 @@
     "settings.noteA": "A",
     "settings.noteAs": "A#",
     "settings.noteB": "B",
-    "settings.channel": "Канал"
+    "settings.channel": "Канал",
+    "settings.languageChanged": "Язык интерфейса обновится полностью\nпри повторном открытии настроек"
 }

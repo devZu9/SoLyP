@@ -5,7 +5,7 @@
 class SettingsComponent : public juce::Component
 {
 public:
-    SettingsComponent();
+    SettingsComponent(std::function<void()> onLangChanged = nullptr);
     ~SettingsComponent() override = default;
 
     void paint(juce::Graphics&) override;

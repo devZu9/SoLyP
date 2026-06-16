@@ -144,3 +144,11 @@ void LeftPanel::setHovered(bool h)
     resized();
     repaint();
 }
+
+void LeftPanel::refreshText()
+{
+    editButton.setButtonText(I18n::get("button.edit"));
+    loadButton.setButtonText(I18n::get("button.load"));
+    resized();
+    repaint();
+}

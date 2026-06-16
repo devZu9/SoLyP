@@ -25,6 +25,7 @@ public:
     static constexpr int compHeight = panelHeight;
 
     void setHovered(bool h);
+    void refreshText();
     int getRequiredWidth() const;
 
 private:

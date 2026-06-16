@@ -367,13 +367,14 @@ void SoLyPAudioProcessorEditor::enterSettingsMode()
     backButton.setButtonText(I18n::get("button.back"));
     backButton.setVisible(true);
 
-    settingsComponent = std::make_unique<SettingsComponent>();
+    settingsComponent = std::make_unique<SettingsComponent>([this] { onLanguageChanged(); });
     addAndMakeVisible(settingsComponent.get());
     resized();
 }
 
 void SoLyPAudioProcessorEditor::exitSettingsMode()
 {
+    languageChangeGuard = false;
     settingsMode = false;
     settingsComponent = nullptr;
     backButton.setVisible(false);
@@ -381,6 +382,36 @@ void SoLyPAudioProcessorEditor::exitSettingsMode()
     if (leftPanel != nullptr) leftPanel->setVisible(true);
     if (controlsPanel != nullptr) controlsPanel->setVisible(true);
     resized();
+}
+
+void SoLyPAudioProcessorEditor::onLanguageChanged()
+{
+    if (languageChangeGuard) return;
+    languageChangeGuard = true;
+
+    saveButton.setButtonText(I18n::get("button.save"));
+    backButton.setButtonText(I18n::get("button.back"));
+    editModeLoadButton.setButtonText(I18n::get("button.load"));
+
+    if (leftPanel != nullptr)
+        leftPanel->refreshText();
+
+    repaint();
+
+    auto* alert = new juce::AlertWindow(
+        I18n::get("settings.language"),
+        I18n::get("settings.languageChanged"),
+        juce::AlertWindow::InfoIcon);
+    alert->setColour(juce::AlertWindow::backgroundColourId, Theme::bgPanel);
+    alert->setColour(juce::AlertWindow::textColourId, Theme::textPrimary);
+    alert->setColour(juce::AlertWindow::outlineColourId, Theme::accentBorder);
+    alert->addButton("OK", 1, juce::KeyPress(juce::KeyPress::returnKey));
+    alert->enterModalState(true, juce::ModalCallbackFunction::create([this, alert](int) {
+        languageChangeGuard = false;
+        if (settingsMode)
+            exitSettingsMode();
+        delete alert;
+    }));
 }
 
 // ── save dialog ─────────────────────────────────────────────────────────────
