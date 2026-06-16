@@ -12,6 +12,11 @@ namespace
     void ensureSongsDir()
     {
         juce::File(getDefaultSongDir()).createDirectory();
+
+        // clean leftover temp files from JUCE atomic writes
+        auto parent = juce::File(getDefaultSongDir()).getParentDirectory();
+        for (auto& f : parent.findChildFiles(juce::File::findFiles, false, "*.tmp"))
+            f.deleteFile();
     }
 }
 
@@ -139,20 +144,17 @@ SoLyPAudioProcessorEditor::~SoLyPAudioProcessorEditor()
 
 void SoLyPAudioProcessorEditor::moved()
 {
-    if (processor.wrapperType == juce::AudioProcessor::wrapperType_Standalone)
-    {
-        auto top = getTopLevelComponent();
-        if (top != nullptr)
-        {
-            auto pos = top->getScreenPosition();
-            auto ws = SettingsManager::load();
-            ws.windowX = pos.x;
-            ws.windowY = pos.y;
-            ws.windowWidth = getWidth();
-            ws.windowHeight = getHeight();
-            SettingsManager::save(ws);
-        }
-    }
+    if (processor.wrapperType != juce::AudioProcessor::wrapperType_Standalone)
+        return;
+    auto top = getTopLevelComponent();
+    if (top == nullptr) return;
+    auto pos = top->getScreenPosition();
+    auto ws = SettingsManager::load();
+    ws.windowX = pos.x;
+    ws.windowY = pos.y;
+    ws.windowWidth = getWidth();
+    ws.windowHeight = getHeight();
+    SettingsManager::save(ws);
 }
 
 bool SoLyPAudioProcessorEditor::keyPressed(const juce::KeyPress&)
@@ -164,13 +166,7 @@ void SoLyPAudioProcessorEditor::timerCallback()
 {
     if (editMode) return;
     if (processor.getTransportState() == SoLyPAudioProcessor::TransportState::Countdown)
-    repaint();
-
-    // persist window size
-    auto ws = SettingsManager::load();
-    ws.windowWidth = getWidth();
-    ws.windowHeight = getHeight();
-    SettingsManager::save(ws);
+        repaint();
 }
 
 void SoLyPAudioProcessorEditor::mouseMove(const juce::MouseEvent& e)
@@ -296,6 +292,12 @@ void SoLyPAudioProcessorEditor::resized()
         controlsPanel->setBounds(getWidth() - ControlsPanel::compWidth - 8, 8,
                                  ControlsPanel::compWidth, ControlsPanel::compHeight);
     repaint();
+
+    // persist window size on every actual resize
+    auto ws = SettingsManager::load();
+    ws.windowWidth = getWidth();
+    ws.windowHeight = getHeight();
+    SettingsManager::save(ws);
 }
 
 void SoLyPAudioProcessorEditor::mouseDown(const juce::MouseEvent&)
