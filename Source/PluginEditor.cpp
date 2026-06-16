@@ -291,6 +291,7 @@ void SoLyPAudioProcessorEditor::resized()
     if (controlsPanel != nullptr)
         controlsPanel->setBounds(getWidth() - ControlsPanel::compWidth - 8, 8,
                                  ControlsPanel::compWidth, ControlsPanel::compHeight);
+
     repaint();
 
     // persist window size on every actual resize

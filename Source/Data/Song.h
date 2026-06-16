@@ -21,6 +21,15 @@ struct Song
     juce::String fileTitle;
     int preLinesOnPause = -1;
 
+    // pre-processed display lines (split long lines by words, mutable for lazy build)
+    mutable juce::StringArray displayLines;
+    mutable juce::Array<int> lineToSection;
+    mutable juce::Array<int> lineToLine;
+    mutable float lastBuildWidth = 0;
+    mutable float lastBuildFontSize = 0;
+
+    void rebuildDisplayLines(float maxWidth, float fontSize) const;
+
     static Song fromJson(const juce::String& jsonText);
     static Song fromText(const juce::String& text);
     juce::String toJson() const;

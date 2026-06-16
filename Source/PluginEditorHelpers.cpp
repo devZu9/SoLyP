@@ -3,8 +3,6 @@
 #include "UI/Theme.h"
 #include "Data/SettingsManager.h"
 #include "Data/I18n.h"
-#include <vector>
-#include <cmath>
 
 // ── shared helpers ─────────────────────────────────────────────────────────
 
@@ -45,61 +43,78 @@ void SoLyPAudioProcessorEditor::paintLyrics(juce::Graphics& g)
     float lineHeight = fontSize * 1.4f;
     auto bounds = getLocalBounds().reduced(40, 20);
     int maxLines = juce::jmax(1, static_cast<int>((bounds.getHeight() - 20) / lineHeight));
-    int linesToShow = juce::jmin(visibleLines, maxLines, static_cast<int>(section.lines.size()));
 
-    if (linesToShow <= 0)
-    {
-        linesToShow = juce::jmin(visibleLines, static_cast<int>(section.lines.size()));
-        if (linesToShow <= 0) return;
-    }
-
-    int startLine = processor.getCurrentLineIndex();
-    if (startLine >= static_cast<int>(section.lines.size())) startLine = 0;
-    if (startLine + linesToShow > static_cast<int>(section.lines.size()))
-        linesToShow = static_cast<int>(section.lines.size() - startLine);
-
-    // long line behavior: 0 = wrap, 1 = shrink (not yet implemented)
     bool wrap = (SettingsManager::load().longLineBehavior == 0);
 
-    // pre-calculate how many visual lines each lyrics line will occupy
-    auto f = juce::Font(juce::FontOptions(fontSize));
-    float availW = (float)bounds.getWidth();
-    std::vector<int> visualLines(linesToShow, 1);
-    int totalVisualLines = 0;
+    // use pre-processed display lines (word-wrapped), or original lines with ellipsis
     if (wrap)
     {
+        // ensure display lines are up to date with current width and font size
+        float availW = (float)bounds.getWidth();
+        if (song.displayLines.isEmpty() || song.lastBuildWidth != availW || song.lastBuildFontSize != fontSize)
+            processor.getCurrentSong().rebuildDisplayLines(availW, fontSize);
+
+        // find start index in displayLines for current section/line
+        int dlIdx = 0;
+        int currentSection = processor.getCurrentSectionIndex();
+        int currentLine = processor.getCurrentLineIndex();
+        for (int si = 0; si < song.lineToSection.size() && si < song.lineToLine.size(); ++si)
+        {
+            if (song.lineToSection[si] == currentSection && song.lineToLine[si] == currentLine)
+            {
+                dlIdx = si;
+                break;
+            }
+            if (si == song.lineToSection.size() - 1 || si == song.lineToLine.size() - 1)
+                dlIdx = 0;
+        }
+
+        int linesToShow = juce::jmin(visibleLines, maxLines, song.displayLines.size() - dlIdx);
+        if (linesToShow <= 0) return;
+
+        float totalHeight = linesToShow * lineHeight;
+        float y = bounds.getY() + (bounds.getHeight() - totalHeight) / 2.0f;
+
         for (int i = 0; i < linesToShow; ++i)
         {
-            int idx = startLine + i;
-            if (idx >= static_cast<int>(section.lines.size())) break;
-            juce::GlyphArrangement ga;
-            ga.addLineOfText(f, section.lines[idx], 0.0f, 0.0f);
-            float textW = ga.getBoundingBox(0, ga.getNumGlyphs(), false).getWidth();
-            visualLines[i] = juce::jmax(1, (int)std::ceil(textW / availW));
-            totalVisualLines += visualLines[i];
+            int idx = dlIdx + i;
+            if (idx >= song.displayLines.size()) break;
+
+            g.setColour(i == 0 ? Theme::textActiveLine : Theme::textOnButton);
+            g.setFont(juce::FontOptions(fontSize));
+            auto lineBounds = bounds.withY(static_cast<int>(y)).withHeight(static_cast<int>(lineHeight));
+            g.drawText(song.displayLines[idx], lineBounds, juce::Justification::centred, false);
+            y += lineHeight;
         }
     }
     else
     {
-        totalVisualLines = linesToShow;
-    }
+        int linesToShow = juce::jmin(visibleLines, maxLines, static_cast<int>(section.lines.size()));
+        if (linesToShow <= 0)
+        {
+            linesToShow = juce::jmin(visibleLines, static_cast<int>(section.lines.size()));
+            if (linesToShow <= 0) return;
+        }
 
-    float totalHeight = totalVisualLines * lineHeight;
-    float y = bounds.getY() + (bounds.getHeight() - totalHeight) / 2.0f;
+        int startLine = processor.getCurrentLineIndex();
+        if (startLine >= static_cast<int>(section.lines.size())) startLine = 0;
+        if (startLine + linesToShow > static_cast<int>(section.lines.size()))
+            linesToShow = static_cast<int>(section.lines.size() - startLine);
 
-    for (int i = 0; i < linesToShow; ++i)
-    {
-        int idx = startLine + i;
-        if (idx >= static_cast<int>(section.lines.size())) break;
+        float totalHeight = linesToShow * lineHeight;
+        float y = bounds.getY() + (bounds.getHeight() - totalHeight) / 2.0f;
 
-        int nLines = visualLines[i];
-        float blockH = nLines * lineHeight;
+        for (int i = 0; i < linesToShow; ++i)
+        {
+            int idx = startLine + i;
+            if (idx >= static_cast<int>(section.lines.size())) break;
 
-        g.setColour(i == 0 ? Theme::textActiveLine : Theme::textOnButton);
-        g.setFont(juce::FontOptions(fontSize));
-        auto lineBounds = bounds.withY(static_cast<int>(y)).withHeight(static_cast<int>(blockH));
-        g.drawText(section.lines[idx], lineBounds, juce::Justification::centred, !wrap);
-        y += blockH;
+            g.setColour(i == 0 ? Theme::textActiveLine : Theme::textOnButton);
+            g.setFont(juce::FontOptions(fontSize));
+            auto lineBounds = bounds.withY(static_cast<int>(y)).withHeight(static_cast<int>(lineHeight));
+            g.drawText(section.lines[idx], lineBounds, juce::Justification::centred, true);
+            y += lineHeight;
+        }
     }
 
     // status bar
