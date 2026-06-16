@@ -12,6 +12,8 @@ public:
     juce::ComboBox* addCombo(const juce::String& labelKey);
     juce::Slider*   addSlider(const juce::String& labelKey, double min, double max, double step);
     juce::ToggleButton* addToggle(const juce::String& labelKey);
+    void addSeparator();
+    juce::Label* getLastLabel();
     int getPreferredHeight() const;
 
 private:
@@ -19,6 +21,7 @@ private:
     struct Row {
         std::unique_ptr<juce::Label> label;
         juce::Component* control = nullptr;
+        bool isSeparator = false;
     };
     std::vector<Row> rows;
 };

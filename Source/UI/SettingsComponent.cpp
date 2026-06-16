@@ -4,6 +4,19 @@
 #include "../Data/SettingsManager.h"
 #include "../Data/I18n.h"
 
+namespace
+{
+    struct LabelForwarder : juce::MouseListener
+    {
+        std::function<void()> onClick;
+        std::function<void()> onDoubleClick;
+        LabelForwarder(std::function<void()> c, std::function<void()> dc)
+            : onClick(c), onDoubleClick(dc) {}
+        void mouseDown(const juce::MouseEvent&) override { if (onClick) onClick(); }
+        void mouseDoubleClick(const juce::MouseEvent&) override { if (onDoubleClick) onDoubleClick(); }
+    };
+}
+
 SettingsComponent::SettingsComponent()
 {
     auto* container = new juce::Component();
@@ -24,6 +37,59 @@ SettingsComponent::SettingsComponent()
         langCb->onChange = [langCb] {
             auto st = SettingsManager::load();
             st.language = langCb->getSelectedId() == 2 ? "en" : "ru";
+            SettingsManager::save(st);
+        };
+
+        // separator before BPM section
+        card->addSeparator();
+
+        // BPM controls on General card
+        auto* bpmTg = card->addToggle(I18n::get("settings.manualBpm"));
+        bpmTg->setToggleState(s.manualBpmEnabled, juce::dontSendNotification);
+        auto* bpmLabel = card->getLastLabel();
+
+        auto* bpvSl = card->addSlider(I18n::get("settings.manualBpmValue"), 20.0, 300.0, 1.0);
+        bpvSl->setValue((double)s.manualBpmValue);
+        bpvSl->setVelocityBasedMode(true);
+        bpvSl->setDoubleClickReturnValue(true, 120.0);
+        bpvSl->onValueChange = [bpvSl] {
+            auto st = SettingsManager::load();
+            st.manualBpmValue = (float)bpvSl->getValue();
+            SettingsManager::save(st);
+        };
+
+        auto* bpvLabel = card->getLastLabel();
+
+        // toggle label click → toggle the button
+        if (bpmLabel != nullptr)
+            bpmLabel->addMouseListener(new LabelForwarder(
+                [bpmTg] { bpmTg->triggerClick(); },
+                nullptr
+            ), false);
+
+        // BPM label double-click → reset slider to 120
+        if (bpvLabel != nullptr)
+            bpvLabel->addMouseListener(new LabelForwarder(
+                nullptr,
+                [bpvSl] { bpvSl->setValue(120.0); }
+            ), false);
+
+        // apply initial dim state
+        float initAlpha = s.manualBpmEnabled ? 1.0f : 0.4f;
+        bpvSl->setEnabled(s.manualBpmEnabled);
+        bpvSl->setAlpha(initAlpha);
+        if (bpvLabel != nullptr)
+            bpvLabel->setAlpha(initAlpha);
+
+        bpmTg->onStateChange = [bpmTg, bpvSl, bpvLabel] {
+            bool on = bpmTg->getToggleState();
+            float a = on ? 1.0f : 0.4f;
+            bpvSl->setEnabled(on);
+            bpvSl->setAlpha(a);
+            if (bpvLabel != nullptr)
+                bpvLabel->setAlpha(a);
+            auto st = SettingsManager::load();
+            st.manualBpmEnabled = on;
             SettingsManager::save(st);
         };
         container->addAndMakeVisible(card);
@@ -124,27 +190,6 @@ SettingsComponent::SettingsComponent()
             };
             ++comboIdx;
         }
-        container->addAndMakeVisible(card);
-    }
-
-    // ── card 5: Sync ──
-    {
-        auto* card = new SettingsCard("Sync");
-        auto* bpmTg = card->addToggle(I18n::get("settings.manualBpm"));
-        bpmTg->setToggleState(s.manualBpmEnabled, juce::dontSendNotification);
-        bpmTg->onStateChange = [bpmTg] {
-            auto st = SettingsManager::load();
-            st.manualBpmEnabled = bpmTg->getToggleState();
-            SettingsManager::save(st);
-        };
-
-        auto* bpvSl = card->addSlider(I18n::get("settings.manualBpmValue"), 20.0, 300.0, 1.0);
-        bpvSl->setValue((double)s.manualBpmValue);
-        bpvSl->onValueChange = [bpvSl] {
-            auto st = SettingsManager::load();
-            st.manualBpmValue = (float)bpvSl->getValue();
-            SettingsManager::save(st);
-        };
         container->addAndMakeVisible(card);
     }
 

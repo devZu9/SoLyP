@@ -3,6 +3,8 @@
 #include "UI/Theme.h"
 #include "Data/SettingsManager.h"
 #include "Data/I18n.h"
+#include <vector>
+#include <cmath>
 
 // ── shared helpers ─────────────────────────────────────────────────────────
 
@@ -56,7 +58,33 @@ void SoLyPAudioProcessorEditor::paintLyrics(juce::Graphics& g)
     if (startLine + linesToShow > static_cast<int>(section.lines.size()))
         linesToShow = static_cast<int>(section.lines.size() - startLine);
 
-    float totalHeight = linesToShow * lineHeight;
+    // long line behavior: 0 = wrap, 1 = shrink (not yet implemented)
+    bool wrap = (SettingsManager::load().longLineBehavior == 0);
+
+    // pre-calculate how many visual lines each lyrics line will occupy
+    auto f = juce::Font(juce::FontOptions(fontSize));
+    float availW = (float)bounds.getWidth();
+    std::vector<int> visualLines(linesToShow, 1);
+    int totalVisualLines = 0;
+    if (wrap)
+    {
+        for (int i = 0; i < linesToShow; ++i)
+        {
+            int idx = startLine + i;
+            if (idx >= static_cast<int>(section.lines.size())) break;
+            juce::GlyphArrangement ga;
+            ga.addLineOfText(f, section.lines[idx], 0.0f, 0.0f);
+            float textW = ga.getBoundingBox(0, ga.getNumGlyphs(), false).getWidth();
+            visualLines[i] = juce::jmax(1, (int)std::ceil(textW / availW));
+            totalVisualLines += visualLines[i];
+        }
+    }
+    else
+    {
+        totalVisualLines = linesToShow;
+    }
+
+    float totalHeight = totalVisualLines * lineHeight;
     float y = bounds.getY() + (bounds.getHeight() - totalHeight) / 2.0f;
 
     for (int i = 0; i < linesToShow; ++i)
@@ -64,11 +92,14 @@ void SoLyPAudioProcessorEditor::paintLyrics(juce::Graphics& g)
         int idx = startLine + i;
         if (idx >= static_cast<int>(section.lines.size())) break;
 
+        int nLines = visualLines[i];
+        float blockH = nLines * lineHeight;
+
         g.setColour(i == 0 ? Theme::textActiveLine : Theme::textOnButton);
         g.setFont(juce::FontOptions(fontSize));
-        auto lineBounds = bounds.withY(static_cast<int>(y)).withHeight(static_cast<int>(lineHeight));
-        g.drawText(section.lines[idx], lineBounds, juce::Justification::centred, true);
-        y += lineHeight;
+        auto lineBounds = bounds.withY(static_cast<int>(y)).withHeight(static_cast<int>(blockH));
+        g.drawText(section.lines[idx], lineBounds, juce::Justification::centred, !wrap);
+        y += blockH;
     }
 
     // status bar

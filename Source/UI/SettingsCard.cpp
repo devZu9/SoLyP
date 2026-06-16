@@ -18,6 +18,30 @@ void SettingsCard::paint(juce::Graphics& g)
 
     g.setColour(Theme::accentBorder.withAlpha(0.2f));
     g.drawRoundedRectangle(b.toFloat(), 16.0f, 1.0f);
+
+    // draw separator lines
+    auto content = b.reduced(16);
+    content.removeFromTop(28 + 8);
+
+    for (auto& row : rows)
+    {
+        if (row.isSeparator)
+        {
+            int sy = content.getY() + 12;
+            g.setColour(Theme::accentBorder.withAlpha(0.3f));
+            g.drawHorizontalLine(sy, (float)content.getX() + 4, (float)content.getRight() - 4);
+            content.removeFromTop(24);
+        }
+        else if (row.control == nullptr)
+        {
+            content.removeFromTop(8);
+        }
+        else
+        {
+            content.removeFromTop(28);
+            content.removeFromTop(12);
+        }
+    }
 }
 
 void SettingsCard::resized()
@@ -29,6 +53,12 @@ void SettingsCard::resized()
 
     for (auto& row : rows)
     {
+        if (row.isSeparator)
+        {
+            b.removeFromTop(24);
+            continue;
+        }
+
         if (row.control == nullptr)
         {
             b.removeFromTop(8);
@@ -40,7 +70,12 @@ void SettingsCard::resized()
 
         auto rowArea = b.removeFromTop(rowH);
         if (row.label) row.label->setBounds(rowArea.removeFromLeft(rowArea.getWidth() / 2));
-        row.control->setBounds(rowArea);
+
+        // toggle buttons: fit to content, don't stretch
+        if (dynamic_cast<juce::ToggleButton*>(row.control) != nullptr)
+            row.control->setBounds(rowArea.removeFromLeft(30));
+        else
+            row.control->setBounds(rowArea);
 
         b.removeFromTop(12);
     }
@@ -106,12 +141,28 @@ juce::ToggleButton* SettingsCard::addToggle(const juce::String& labelText)
     return tg;
 }
 
+void SettingsCard::addSeparator()
+{
+    auto& row = rows.emplace_back();
+    row.isSeparator = true;
+}
+
+juce::Label* SettingsCard::getLastLabel()
+{
+    for (auto it = rows.rbegin(); it != rows.rend(); ++it)
+        if (it->label != nullptr)
+            return it->label.get();
+    return nullptr;
+}
+
 int SettingsCard::getPreferredHeight() const
 {
     int h = 16 + 28 + 8; // padding top + title + gap
     for (auto& row : rows)
     {
-        if (row.control == nullptr)
+        if (row.isSeparator)
+            h += 24;
+        else if (row.control == nullptr)
             h += 8;
         else
             h += 28 + 12;
