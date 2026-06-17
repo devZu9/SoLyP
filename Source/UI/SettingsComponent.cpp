@@ -25,8 +25,6 @@ SettingsComponent::SettingsComponent(std::function<void()> onLangChanged)
     viewport.setScrollBarsShown(true, false);
     addAndMakeVisible(viewport);
 
-    auto s = SettingsManager::load();
-
     // ── card 1: General ──
     {
         auto* card = new SettingsCard(I18n::get("settings.title"));
@@ -34,66 +32,49 @@ SettingsComponent::SettingsComponent(std::function<void()> onLangChanged)
         langCb->addItem(juce::String::fromUTF8("Русский"), 1);
         langCb->addItem("English", 2);
         langCb->onChange = [langCb, onLangChanged] {
-            auto st = SettingsManager::load();
-            st.language = langCb->getSelectedId() == 2 ? "en" : "ru";
-            SettingsManager::save(st);
-            I18n::setLanguage(st.language);
+            SettingsManager::language = langCb->getSelectedId() == 2 ? "en" : "ru";
+            I18n::setLanguage(SettingsManager::language);
+            SettingsManager::save();
             if (onLangChanged) onLangChanged();
         };
-        langCb->setSelectedId(s.language == "en" ? 2 : 1, juce::dontSendNotification);
+        langCb->setSelectedId(I18n::getCurrentLang().equalsIgnoreCase("en") ? 2 : 1, juce::dontSendNotification);
 
         // separator before BPM section
         card->addSeparator();
 
-        // BPM controls on General card
+        // BPM controls
         auto* bpmTg = card->addToggle(I18n::get("settings.manualBpm"));
-        bpmTg->setToggleState(s.manualBpmEnabled, juce::dontSendNotification);
-        auto* bpmLabel = card->getLastLabel();
+        bpmTg->setToggleState(SettingsManager::manualBpmEnabled, juce::dontSendNotification);
 
         auto* bpvSl = card->addSlider(I18n::get("settings.manualBpmValue"), 20.0, 300.0, 1.0);
-        bpvSl->setValue((double)s.manualBpmValue);
+        bpvSl->setValue((double)SettingsManager::manualBpmValue);
         bpvSl->setVelocityBasedMode(true);
         bpvSl->setDoubleClickReturnValue(true, 120.0);
         bpvSl->onValueChange = [bpvSl] {
-            auto st = SettingsManager::load();
-            st.manualBpmValue = (float)bpvSl->getValue();
-            SettingsManager::save(st);
+            SettingsManager::manualBpmValue = (float)bpvSl->getValue();
+            SettingsManager::save();
         };
 
-        auto* bpvLabel = card->getLastLabel();
+        auto* bpmLabel = card->getLastLabel();
 
-        // toggle label click → toggle the button
-        if (bpmLabel != nullptr)
-            bpmLabel->addMouseListener(new LabelForwarder(
-                [bpmTg] { bpmTg->triggerClick(); },
-                nullptr
-            ), false);
-
-        // BPM label double-click → reset slider to 120
-        if (bpvLabel != nullptr)
-            bpvLabel->addMouseListener(new LabelForwarder(
-                nullptr,
-                [bpvSl] { bpvSl->setValue(120.0); }
-            ), false);
-
-        // apply initial dim state
-        float initAlpha = s.manualBpmEnabled ? 1.0f : 0.4f;
-        bpvSl->setEnabled(s.manualBpmEnabled);
+        // dimming
+        float initAlpha = SettingsManager::manualBpmEnabled ? 1.0f : 0.4f;
+        bpvSl->setEnabled(SettingsManager::manualBpmEnabled);
         bpvSl->setAlpha(initAlpha);
-        if (bpvLabel != nullptr)
-            bpvLabel->setAlpha(initAlpha);
+        if (bpmLabel != nullptr)
+            bpmLabel->setAlpha(initAlpha);
 
-        bpmTg->onStateChange = [bpmTg, bpvSl, bpvLabel] {
+        bpmTg->onStateChange = [bpmTg, bpvSl, bpmLabel] {
             bool on = bpmTg->getToggleState();
             float a = on ? 1.0f : 0.4f;
+            SettingsManager::manualBpmEnabled = on;
             bpvSl->setEnabled(on);
             bpvSl->setAlpha(a);
-            if (bpvLabel != nullptr)
-                bpvLabel->setAlpha(a);
-            auto st = SettingsManager::load();
-            st.manualBpmEnabled = on;
-            SettingsManager::save(st);
+            if (bpmLabel != nullptr)
+                bpmLabel->setAlpha(a);
+            SettingsManager::save();
         };
+
         container->addAndMakeVisible(card);
     }
 
@@ -101,20 +82,18 @@ SettingsComponent::SettingsComponent(std::function<void()> onLangChanged)
     {
         auto* card = new SettingsCard(I18n::get("settings.longLines"));
         auto* preSl = card->addSlider(I18n::get("settings.preLines"), 1.0, 5.0, 1.0);
-        preSl->setValue((double)s.preLinesOnPause);
+        preSl->setValue((double)SettingsManager::preLinesOnPause);
         preSl->onValueChange = [preSl] {
-            auto st = SettingsManager::load();
-            st.preLinesOnPause = (int)preSl->getValue();
-            SettingsManager::save(st);
+            SettingsManager::preLinesOnPause = (int)preSl->getValue();
+            SettingsManager::save();
         };
         auto* longCb = card->addCombo(I18n::get("settings.longLines"));
         longCb->addItem(I18n::get("settings.longLinesWrap"), 1);
         longCb->addItem(I18n::get("settings.longLinesShrink"), 2);
-        longCb->setSelectedId(s.longLineBehavior == 1 ? 2 : 1);
+        longCb->setSelectedId(SettingsManager::longLineBehavior == 1 ? 2 : 1);
         longCb->onChange = [longCb] {
-            auto st = SettingsManager::load();
-            st.longLineBehavior = longCb->getSelectedId() - 1;
-            SettingsManager::save(st);
+            SettingsManager::longLineBehavior = longCb->getSelectedId() - 1;
+            SettingsManager::save();
         };
         container->addAndMakeVisible(card);
     }
@@ -127,35 +106,31 @@ SettingsComponent::SettingsComponent(std::function<void()> onLangChanged)
         octCb->addItem(I18n::get("settings.octaveRoland"), 2);
         octCb->addItem(I18n::get("settings.octaveC3"), 3);
         octCb->addItem(I18n::get("settings.octaveC4"), 4);
-        octCb->setSelectedId(s.octaveSystem + 1);
+        octCb->setSelectedId(SettingsManager::octaveSystem + 1);
         octCb->onChange = [octCb] {
-            auto st = SettingsManager::load();
-            st.octaveSystem = octCb->getSelectedId() - 1;
-            SettingsManager::save(st);
+            SettingsManager::octaveSystem = octCb->getSelectedId() - 1;
+            SettingsManager::save();
         };
 
         auto* lmSl = card->addSlider(I18n::get("settings.landmarkOctave"), 0.0, 10.0, 1.0);
-        lmSl->setValue((double)s.landmarkOctave);
+        lmSl->setValue((double)SettingsManager::landmarkOctave);
         lmSl->onValueChange = [lmSl] {
-            auto st = SettingsManager::load();
-            st.landmarkOctave = (int)lmSl->getValue();
-            SettingsManager::save(st);
+            SettingsManager::landmarkOctave = (int)lmSl->getValue();
+            SettingsManager::save();
         };
 
         auto* trSl = card->addSlider(I18n::get("settings.triggerOctave"), 0.0, 10.0, 1.0);
-        trSl->setValue((double)s.triggerOctave);
+        trSl->setValue((double)SettingsManager::triggerOctave);
         trSl->onValueChange = [trSl] {
-            auto st = SettingsManager::load();
-            st.triggerOctave = (int)trSl->getValue();
-            SettingsManager::save(st);
+            SettingsManager::triggerOctave = (int)trSl->getValue();
+            SettingsManager::save();
         };
 
         auto* chSl = card->addSlider(I18n::get("settings.midiChannel"), 0.0, 16.0, 1.0);
-        chSl->setValue((double)s.midiChannel);
+        chSl->setValue((double)SettingsManager::midiChannel);
         chSl->onValueChange = [chSl] {
-            auto st = SettingsManager::load();
-            st.midiChannel = (int)chSl->getValue();
-            SettingsManager::save(st);
+            SettingsManager::midiChannel = (int)chSl->getValue();
+            SettingsManager::save();
         };
         container->addAndMakeVisible(card);
     }
@@ -168,29 +143,27 @@ SettingsComponent::SettingsComponent(std::function<void()> onLangChanged)
             "settings.noteE", "settings.noteF", "settings.noteFs", "settings.noteG",
             "settings.noteGs", "settings.noteA", "settings.noteAs", "settings.noteB"
         };
-        struct { const char* key; int* ptr; } trigs[] = {
-            { "settings.triggerPlay", &s.triggerPlay },
-            { "settings.triggerPause", &s.triggerPause },
-            { "settings.triggerNext", &s.triggerNextSection },
-            { "settings.triggerHybrid", &s.triggerHybrid },
-            { "settings.triggerCount3", &s.triggerCountdown3 },
-            { "settings.triggerCount5", &s.triggerCountdown5 }
+
+        int* trigPtrs[] = {
+            &SettingsManager::triggerPlay, &SettingsManager::triggerPause,
+            &SettingsManager::triggerNextSection, &SettingsManager::triggerHybrid,
+            &SettingsManager::triggerCountdown3, &SettingsManager::triggerCountdown5
         };
-        int comboIdx = 0;
-        for (auto& t : trigs)
+        const char* trigKeys[] = {
+            "settings.triggerPlay", "settings.triggerPause", "settings.triggerNext",
+            "settings.triggerHybrid", "settings.triggerCount3", "settings.triggerCount5"
+        };
+
+        for (int idx = 0; idx < 6; ++idx)
         {
-            auto* cb = card->addCombo(I18n::get(t.key));
+            auto* cb = card->addCombo(I18n::get(trigKeys[idx]));
             for (int i = 0; i < 12; ++i)
                 cb->addItem(I18n::get(noteKeys[i]), i + 1);
-            cb->setSelectedId(*t.ptr + 1);
-            cb->onChange = [cb, comboIdx] {
-                auto st = SettingsManager::load();
-                int* targets[] = { &st.triggerPlay, &st.triggerPause, &st.triggerNextSection,
-                                   &st.triggerHybrid, &st.triggerCountdown3, &st.triggerCountdown5 };
-                *targets[comboIdx] = cb->getSelectedId() - 1;
-                SettingsManager::save(st);
+            cb->setSelectedId(*trigPtrs[idx] + 1);
+            cb->onChange = [cb, idx, trigPtrs] {
+                *trigPtrs[idx] = cb->getSelectedId() - 1;
+                SettingsManager::save();
             };
-            ++comboIdx;
         }
         container->addAndMakeVisible(card);
     }
@@ -227,7 +200,6 @@ void SettingsComponent::resized()
     int pad = 16;
     auto gridBounds = area.reduced(pad, pad).withY(pad);
 
-    // auto-rows: use the tallest card's preferred height
     int cardH = 200;
     for (auto* child : children)
         if (auto* card = dynamic_cast<SettingsCard*>(child))

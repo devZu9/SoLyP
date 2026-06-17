@@ -28,9 +28,9 @@ SoLyPAudioProcessorEditor::SoLyPAudioProcessorEditor(SoLyPAudioProcessor& p)
         .getChildFile("SoLyP").getChildFile("themes");
     Theme::loadFromFile(themeDir.getChildFile("dark.json"));
 
-    // load settings and language
-    auto settings = SettingsManager::load();
-    I18n::setLanguage(settings.language);
+    // load settings once, apply language
+    SettingsManager::load();
+    I18n::setLanguage(SettingsManager::language);
 
     ensureSongsDir();
 
@@ -39,23 +39,27 @@ SoLyPAudioProcessorEditor::SoLyPAudioProcessorEditor(SoLyPAudioProcessor& p)
     setConstrainer(nullptr);
 
     // apply saved window size
-    if (settings.windowWidth > 0 && settings.windowHeight > 0)
-        setSize(settings.windowWidth, settings.windowHeight);
+    if (SettingsManager::windowWidth > 0 && SettingsManager::windowHeight > 0)
+        setSize(SettingsManager::windowWidth, SettingsManager::windowHeight);
 
-    // apply saved window position (Standalone only)
-    if (processor.wrapperType == juce::AudioProcessor::wrapperType_Standalone)
-    {
-        if (settings.windowX != 0 || settings.windowY != 0)
+    // defer: restore position, register listener, allow saves
+    juce::MessageManager::callAsync([this] {
+        if (auto* top = getTopLevelComponent())
         {
-            auto* resizable = dynamic_cast<juce::ResizableWindow*>(getTopLevelComponent());
-            if (resizable != nullptr)
-                resizable->setTopLeftPosition(settings.windowX, settings.windowY);
+            top->addComponentListener(this);
+
+            if (processor.wrapperType == juce::AudioProcessor::wrapperType_Standalone)
+            {
+                if (SettingsManager::windowX != 0 || SettingsManager::windowY != 0)
+                    top->setTopLeftPosition(SettingsManager::windowX, SettingsManager::windowY);
+            }
         }
-    }
+        SettingsManager::noStartSave = false;
+    });
+
     setAlwaysOnTop(true);
     setMouseClickGrabsKeyboardFocus(false);
     setWantsKeyboardFocus(true);
-    startTimerHz(30);
 
     // edit mode widgets
     textEditor = std::make_unique<juce::TextEditor>();
@@ -128,45 +132,39 @@ SoLyPAudioProcessorEditor::SoLyPAudioProcessorEditor(SoLyPAudioProcessor& p)
                              ControlsPanel::compWidth, ControlsPanel::compHeight);
     addAndMakeVisible(controlsPanel.get());
 
-    // load saved settings
-    visibleLines = settings.visibleLines;
-    fontSize = settings.fontSize;
-    controlsPanel->linesSlider.setValue(visibleLines);
-    controlsPanel->fontSizeSlider.setValue(fontSize);
+    // apply initial slider values from SettingsManager
+    controlsPanel->linesSlider.setValue((double)SettingsManager::visibleLines, juce::dontSendNotification);
+    controlsPanel->fontSizeSlider.setValue((double)SettingsManager::fontSize, juce::dontSendNotification);
 
     processor.onStateChanged = [this]() { repaint(); };
+
 }
 
 SoLyPAudioProcessorEditor::~SoLyPAudioProcessorEditor()
 {
     processor.onStateChanged = nullptr;
+    if (auto* top = getTopLevelComponent())
+        top->removeComponentListener(this);
 }
 
-void SoLyPAudioProcessorEditor::moved()
+void SoLyPAudioProcessorEditor::componentMovedOrResized(
+    juce::Component& comp, bool wasMoved, bool wasResized)
 {
-    if (processor.wrapperType != juce::AudioProcessor::wrapperType_Standalone)
-        return;
-    auto top = getTopLevelComponent();
-    if (top == nullptr) return;
-    auto pos = top->getScreenPosition();
-    auto ws = SettingsManager::load();
-    ws.windowX = pos.x;
-    ws.windowY = pos.y;
-    ws.windowWidth = getWidth();
-    ws.windowHeight = getHeight();
-    SettingsManager::save(ws);
+    if (wasMoved || wasResized)
+    {
+        auto pos = comp.getScreenPosition();
+        SettingsManager::windowWidth = getWidth();
+        SettingsManager::windowHeight = getHeight();
+        SettingsManager::windowX = pos.x;
+        SettingsManager::windowY = pos.y;
+        SettingsManager::save();
+    }
+    return;
 }
 
 bool SoLyPAudioProcessorEditor::keyPressed(const juce::KeyPress&)
 {
     return false;
-}
-
-void SoLyPAudioProcessorEditor::timerCallback()
-{
-    if (editMode) return;
-    if (processor.getTransportState() == SoLyPAudioProcessor::TransportState::Countdown)
-        repaint();
 }
 
 void SoLyPAudioProcessorEditor::mouseMove(const juce::MouseEvent& e)
@@ -215,15 +213,12 @@ void SoLyPAudioProcessorEditor::sliderValueChanged(juce::Slider* slider)
     if (controlsPanel != nullptr)
     {
         if (slider == &controlsPanel->linesSlider)
-            visibleLines = static_cast<int>(controlsPanel->linesSlider.getValue());
+            SettingsManager::visibleLines = static_cast<int>(controlsPanel->linesSlider.getValue());
         else if (slider == &controlsPanel->fontSizeSlider)
-            fontSize = static_cast<float>(controlsPanel->fontSizeSlider.getValue());
+            SettingsManager::fontSize = static_cast<float>(controlsPanel->fontSizeSlider.getValue());
     }
 
-    Settings s;
-    s.visibleLines = visibleLines;
-    s.fontSize = fontSize;
-    SettingsManager::save(s);
+    SettingsManager::save();
     repaint();
 }
 
@@ -237,10 +232,7 @@ void SoLyPAudioProcessorEditor::paint(juce::Graphics& g)
         return;
 
     auto state = processor.getTransportState();
-    if (state == SoLyPAudioProcessor::TransportState::Countdown)
-        paintCountdown(g);
-    else
-        paintLyrics(g);
+    paintLyrics(g);
 
     if (state == SoLyPAudioProcessor::TransportState::Paused)
         paintPauseOverlay(g);
@@ -293,12 +285,6 @@ void SoLyPAudioProcessorEditor::resized()
                                  ControlsPanel::compWidth, ControlsPanel::compHeight);
 
     repaint();
-
-    // persist window size on every actual resize
-    auto ws = SettingsManager::load();
-    ws.windowWidth = getWidth();
-    ws.windowHeight = getHeight();
-    SettingsManager::save(ws);
 }
 
 void SoLyPAudioProcessorEditor::mouseDown(const juce::MouseEvent&)

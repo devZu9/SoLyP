@@ -40,19 +40,19 @@ void SoLyPAudioProcessorEditor::paintLyrics(juce::Graphics& g)
     }
 
     const auto& section = song.sections[processor.getCurrentSectionIndex()];
-    float lineHeight = fontSize * 1.4f;
+    float lineHeight = SettingsManager::fontSize * 1.4f;
     auto bounds = getLocalBounds().reduced(40, 20);
     int maxLines = juce::jmax(1, static_cast<int>((bounds.getHeight() - 20) / lineHeight));
 
-    bool wrap = (SettingsManager::load().longLineBehavior == 0);
+    bool wrap = (SettingsManager::longLineBehavior == 0);
 
     // use pre-processed display lines (word-wrapped), or original lines with ellipsis
     if (wrap)
     {
         // ensure display lines are up to date with current width and font size
         float availW = (float)bounds.getWidth();
-        if (song.displayLines.isEmpty() || song.lastBuildWidth != availW || song.lastBuildFontSize != fontSize)
-            processor.getCurrentSong().rebuildDisplayLines(availW, fontSize);
+        if (song.displayLines.isEmpty() || song.lastBuildWidth != availW || song.lastBuildFontSize != SettingsManager::fontSize)
+            processor.getCurrentSong().rebuildDisplayLines(availW, SettingsManager::fontSize);
 
         // find start index in displayLines for current section/line
         int dlIdx = 0;
@@ -69,7 +69,7 @@ void SoLyPAudioProcessorEditor::paintLyrics(juce::Graphics& g)
                 dlIdx = 0;
         }
 
-        int linesToShow = juce::jmin(visibleLines, maxLines, song.displayLines.size() - dlIdx);
+        int linesToShow = juce::jmin(SettingsManager::visibleLines, maxLines, song.displayLines.size() - dlIdx);
         if (linesToShow <= 0) return;
 
         float totalHeight = linesToShow * lineHeight;
@@ -81,7 +81,7 @@ void SoLyPAudioProcessorEditor::paintLyrics(juce::Graphics& g)
             if (idx >= song.displayLines.size()) break;
 
             g.setColour(i == 0 ? Theme::textActiveLine : Theme::textOnButton);
-            g.setFont(juce::FontOptions(fontSize));
+            g.setFont(juce::FontOptions(SettingsManager::fontSize));
             auto lineBounds = bounds.withY(static_cast<int>(y)).withHeight(static_cast<int>(lineHeight));
             g.drawText(song.displayLines[idx], lineBounds, juce::Justification::centred, false);
             y += lineHeight;
@@ -89,10 +89,10 @@ void SoLyPAudioProcessorEditor::paintLyrics(juce::Graphics& g)
     }
     else
     {
-        int linesToShow = juce::jmin(visibleLines, maxLines, static_cast<int>(section.lines.size()));
+        int linesToShow = juce::jmin(SettingsManager::visibleLines, maxLines, static_cast<int>(section.lines.size()));
         if (linesToShow <= 0)
         {
-            linesToShow = juce::jmin(visibleLines, static_cast<int>(section.lines.size()));
+            linesToShow = juce::jmin(SettingsManager::visibleLines, static_cast<int>(section.lines.size()));
             if (linesToShow <= 0) return;
         }
 
@@ -110,7 +110,7 @@ void SoLyPAudioProcessorEditor::paintLyrics(juce::Graphics& g)
             if (idx >= static_cast<int>(section.lines.size())) break;
 
             g.setColour(i == 0 ? Theme::textActiveLine : Theme::textOnButton);
-            g.setFont(juce::FontOptions(fontSize));
+            g.setFont(juce::FontOptions(SettingsManager::fontSize));
             auto lineBounds = bounds.withY(static_cast<int>(y)).withHeight(static_cast<int>(lineHeight));
             g.drawText(section.lines[idx], lineBounds, juce::Justification::centred, true);
             y += lineHeight;
@@ -133,32 +133,6 @@ void SoLyPAudioProcessorEditor::paintLyrics(juce::Graphics& g)
 
     // version — bottom-right
     g.drawText("v" + juce::String(SOLYP_VERSION), getLocalBounds().reduced(10, 5), juce::Justification::bottomRight);
-}
-
-void SoLyPAudioProcessorEditor::paintCountdown(juce::Graphics& g)
-{
-    g.setColour(juce::Colours::white);
-    g.setFont(juce::FontOptions(120.0f));
-    juce::String digit = juce::String(processor.getCountdownValue());
-    if (digit == "0")
-    {
-        g.setColour(Theme::countdown);
-        digit = I18n::get("countdown.go");
-    }
-    auto bounds = getLocalBounds();
-    g.drawText(digit, bounds.removeFromTop(bounds.getHeight() / 2), juce::Justification::centred);
-
-    const auto& song = processor.getCurrentSong();
-    if (!song.sections.isEmpty())
-    {
-        int nextIdx = processor.getCurrentSectionIndex();
-        if (nextIdx < static_cast<int>(song.sections.size()))
-        {
-            g.setFont(juce::FontOptions(36.0f));
-            g.setColour(Theme::textPause);
-            g.drawText(song.sections[nextIdx].lines[0], bounds, juce::Justification::centred);
-        }
-    }
 }
 
 void SoLyPAudioProcessorEditor::paintPauseOverlay(juce::Graphics& g)

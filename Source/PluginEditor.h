@@ -8,9 +8,9 @@
 class SettingsComponent;
 
 class SoLyPAudioProcessorEditor : public juce::AudioProcessorEditor,
-                                  private juce::Timer,
                                   private juce::Button::Listener,
-                                  private juce::Slider::Listener
+                                  private juce::Slider::Listener,
+                                  private juce::ComponentListener
 {
 public:
     SoLyPAudioProcessorEditor(SoLyPAudioProcessor&);
@@ -19,19 +19,17 @@ public:
     void paint(juce::Graphics&) override;
     void paintOverChildren(juce::Graphics&) override;
     void resized() override;
-    void moved() override;
+    void componentMovedOrResized(juce::Component&, bool wasMoved, bool wasResized) override;
     bool keyPressed(const juce::KeyPress&) override;
     void mouseDown(const juce::MouseEvent&) override;
     void mouseMove(const juce::MouseEvent&) override;
     void mouseExit(const juce::MouseEvent&) override;
 
 private:
-    void timerCallback() override;
     void buttonClicked(juce::Button*) override;
     void sliderValueChanged(juce::Slider*) override;
 
     void paintLyrics(juce::Graphics& g);
-    void paintCountdown(juce::Graphics& g);
     void paintPauseOverlay(juce::Graphics& g);
     void paintError(juce::Graphics& g);
 
@@ -47,8 +45,6 @@ private:
 
     SoLyPAudioProcessor& processor;
 
-    int visibleLines = 6;
-    float fontSize = 80.0f;
 
     juce::String lastError;
 

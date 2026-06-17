@@ -2,47 +2,45 @@
 
 #include <JuceHeader.h>
 
-struct Settings
-{
-    // display
-    int visibleLines = 6;
-    float fontSize = 80.0f;
-    int preLinesOnPause = 1;
-    juce::String pauseText = "";
-    int longLineBehavior = 0; // 0 = wrap, 1 = shrink
-
-    // language & theme
-    juce::String language = "ru";
-    juce::String themeName = "dark";
-
-    // MIDI
-    int octaveSystem = 0; // 0 = yamaha, 1 = roland, 2 = c3, 3 = c4
-    int landmarkOctave = 1;
-    int triggerOctave = 2;
-    int midiChannel = 0;  // 0 = Omni, 1-16 = specific
-
-    // trigger note indices within triggerOctave (0-11 = C to B)
-    int triggerPlay = 0;        // C
-    int triggerPause = 2;       // D
-    int triggerNextSection = 4; // E
-    int triggerHybrid = 5;      // F
-    int triggerCountdown3 = 7;  // G
-    int triggerCountdown5 = 9;  // A
-
-    // sync
-    bool manualBpmEnabled = false;
-    float manualBpmValue = 120.0f;
-
-    // window
-    int windowWidth = 0;
-    int windowHeight = 0;
-    int windowX = 0;
-    int windowY = 0;
-};
-
 namespace SettingsManager
 {
+    // display
+    inline int visibleLines = 6;
+    inline float fontSize = 80.0f;
+    inline int preLinesOnPause = 1;
+    inline juce::String pauseText;
+    inline int longLineBehavior = 0; // 0 = wrap, 1 = shrink
+
+    // language & theme
+    inline juce::String language = "ru";
+    inline juce::String themeName = "dark";
+
+    // MIDI
+    inline int octaveSystem = 0;
+    inline int landmarkOctave = 1;
+    inline int triggerOctave = 2;
+    inline int midiChannel = 0;
+    inline int triggerPlay = 0;
+    inline int triggerPause = 2;
+    inline int triggerNextSection = 4;
+    inline int triggerHybrid = 5;
+    inline int triggerCountdown3 = 7;
+    inline int triggerCountdown5 = 9;
+
+    // sync
+    inline bool manualBpmEnabled = false;
+    inline float manualBpmValue = 120.0f;
+
+    // startup guard
+    inline bool noStartSave = true;
+
+    // window
+    inline int windowWidth = 0;
+    inline int windowHeight = 0;
+    inline int windowX = 0;
+    inline int windowY = 0;
+
     juce::File getFile();
-    Settings load();
-    void save(const Settings& s);
+    void load();
+    void save();
 }
