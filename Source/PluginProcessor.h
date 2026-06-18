@@ -47,6 +47,8 @@ public:
     int getCurrentLineIndex() const { return currentLineIndex; }
     int getCurrentBar() const { return lastBar; }
     int getCountdownValue() const { return countdownValue; }
+    int getLastMidiNote() const { return lastMidiNote; }
+    double getLastMidiNoteTime() const { return lastMidiNoteTime; }
 
     int getPreLinesOnPause() const { return preLinesOnPause; }
     void setPreLinesOnPause(int count) { preLinesOnPause = count; }
@@ -79,6 +81,9 @@ private:
     double countdownFraction = 0.0;
 
     int preLinesOnPause = 1;
+
+    int lastMidiNote = -1;
+    double lastMidiNoteTime = 0.0;
 
     MidiManager midiManager;
 

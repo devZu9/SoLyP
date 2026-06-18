@@ -129,6 +129,19 @@ void SoLyPAudioProcessorEditor::paintLyrics(juce::Graphics& g)
     leftInfo += I18n::get("status.section") + " " + section.name
         + "  |  " + I18n::get("status.bar") + " " + juce::String(processor.getCurrentBar())
         + "  |  " + (processor.getTransportState() == SoLyPAudioProcessor::TransportState::Playing ? I18n::get("status.playing") : I18n::get("status.paused"));
+
+    auto note = processor.getLastMidiNote();
+    if (note >= 0)
+    {
+        auto elapsed = juce::Time::getMillisecondCounterHiRes() - processor.getLastMidiNoteTime();
+        if (elapsed < 2000.0)
+        {
+            static const char* noteNames[] = { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" };
+            int octave = (note / 12) - 1;
+            leftInfo += "  |  " + juce::String(noteNames[note % 12]) + juce::String(octave) + " (" + juce::String(note) + ")";
+        }
+    }
+
     g.drawText(leftInfo, getLocalBounds().reduced(10, 5), juce::Justification::bottomLeft);
 
     // version — bottom-right
