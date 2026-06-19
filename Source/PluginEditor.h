@@ -37,6 +37,7 @@ private:
     void paintError(juce::Graphics& g);
     void paintCursor(juce::Graphics& g);
     void resetCursorState();
+    void updateLineCount();
 
     void showSaveDialog();
     void doSave(const juce::String& filename, const juce::String& songTitle);

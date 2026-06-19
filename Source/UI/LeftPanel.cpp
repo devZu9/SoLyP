@@ -28,8 +28,8 @@ LeftPanel::LeftPanel()
         addAndMakeVisible(btn);
     };
 
-    setupIconBtn(loadButton, Icons::folderOpen, I18n::get("button.load"));
-    setupIconBtn(newButton, Icons::filePlus, I18n::get("button.new"));
+    setupIconBtn(loadButton, Icons::fileArrowDown, I18n::get("button.load"));
+    setupIconBtn(newButton, Icons::fileDashed, I18n::get("button.new"));
     setupIconBtn(editButton, Icons::clipboardText, I18n::get("button.edit"));
 
     // settings icon (gear — normal + hover)
@@ -90,18 +90,18 @@ void LeftPanel::resized()
     fb.flexDirection = juce::FlexBox::Direction::row;
     fb.justifyContent = juce::FlexBox::JustifyContent::flexStart;
     fb.items.add(juce::FlexItem(loadButton).withWidth(wBtn));
-    fb.items.add(juce::FlexItem(6.0f, 1.0f));
+    fb.items.add(juce::FlexItem(12.0f, 1.0f));
     fb.items.add(juce::FlexItem(newButton).withWidth(wBtn));
-    fb.items.add(juce::FlexItem(6.0f, 1.0f));
+    fb.items.add(juce::FlexItem(12.0f, 1.0f));
     fb.items.add(juce::FlexItem(editButton).withWidth(wBtn));
-    fb.items.add(juce::FlexItem(6.0f, 1.0f));
+    fb.items.add(juce::FlexItem(12.0f, 1.0f));
     fb.items.add(juce::FlexItem(settingsBtn).withWidth(wBtn));
     fb.performLayout(bounds);
 }
 
 int LeftPanel::getRequiredWidth() const
 {
-    return 10 + 28 + 6 + 28 + 6 + 28 + 6 + 28 + 10 + 8;
+    return 10 + 28 + 12 + 28 + 12 + 28 + 12 + 28 + 10 + 8;
 }
 
 void LeftPanel::mouseEnter(const juce::MouseEvent& e)

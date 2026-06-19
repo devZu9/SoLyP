@@ -305,3 +305,11 @@ void SoLyPAudioProcessorEditor::applySongLoad(Song& song, const juce::File& file
     if (editMode)
         textEditor->setText(songToText(song), juce::dontSendNotification);
 }
+
+int calcFittingLines(int height, float fontSize, const Song& song)
+{
+    float lineHeight = fontSize * 1.4f;
+    int maxTheoretical = static_cast<int>((height - 20) / lineHeight);
+    int actualLines = song.displayLines.size();
+    return juce::jlimit(2, juce::jmin(12, maxTheoretical), actualLines);
+}

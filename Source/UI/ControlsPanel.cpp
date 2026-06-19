@@ -11,20 +11,24 @@ ControlsPanel::ControlsPanel()
         iconDrawable = juce::Drawable::createFromSVG(*xml);
 
     linesSlider.setSliderStyle(juce::Slider::LinearHorizontal);
-    linesSlider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
-    linesSlider.setRange(2.0, 10.0, 1.0);
+    linesSlider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 40, 20);
+    linesSlider.setRange(2.0, 12.0, 1.0);
     linesSlider.setValue(6.0);
     linesSlider.setColour(juce::Slider::trackColourId, Theme::sliderTrack);
     linesSlider.setColour(juce::Slider::thumbColourId, Theme::sliderThumb);
+    linesSlider.setColour(juce::Slider::textBoxTextColourId, Theme::textPrimary);
+    linesSlider.setColour(juce::Slider::textBoxBackgroundColourId, Theme::bgPanel);
     linesSlider.setVisible(false);
     addAndMakeVisible(linesSlider);
 
     fontSizeSlider.setSliderStyle(juce::Slider::LinearHorizontal);
-    fontSizeSlider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
+    fontSizeSlider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 40, 20);
     fontSizeSlider.setRange(20.0, 200.0, 1.0);
     fontSizeSlider.setValue(80.0);
     fontSizeSlider.setColour(juce::Slider::trackColourId, Theme::sliderTrack);
     fontSizeSlider.setColour(juce::Slider::thumbColourId, Theme::sliderThumb);
+    fontSizeSlider.setColour(juce::Slider::textBoxTextColourId, Theme::textPrimary);
+    fontSizeSlider.setColour(juce::Slider::textBoxBackgroundColourId, Theme::bgPanel);
     addAndMakeVisible(fontSizeSlider);
 
     repaint();

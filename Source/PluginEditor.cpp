@@ -139,9 +139,9 @@ SoLyPAudioProcessorEditor::SoLyPAudioProcessorEditor(SoLyPAudioProcessor& p)
     };
 
     setupIconBtn(backButton, Icons::arrowCircleLeft, I18n::get("button.back"));
-    setupIconBtn(editModeLoadButton, Icons::folderOpen, I18n::get("button.load"));
-    setupIconBtn(editModeNewButton, Icons::filePlus, I18n::get("button.new"));
-    setupIconBtn(saveButton, Icons::trayArrowDown, I18n::get("button.save"));
+    setupIconBtn(editModeLoadButton, Icons::fileArrowDown, I18n::get("button.load"));
+    setupIconBtn(editModeNewButton, Icons::fileDashed, I18n::get("button.new"));
+    setupIconBtn(saveButton, Icons::uploadSimpleFill, I18n::get("button.save"));
     addAndMakeVisible(settingsEditBtn);
 
     // left panel
@@ -202,8 +202,6 @@ void SoLyPAudioProcessorEditor::timerCallback()
 
     auto screenPos = juce::Desktop::getInstance().getMousePosition();
     mousePos = getLocalPoint(nullptr, screenPos);
-
-    if (!getLocalBounds().contains(mousePos)) return;
 
     cursorAngle -= 0.005f * powf(1.3f, (float)(SettingsManager::cursorRotSpeed - 1));
     if (cursorAngle < 0.0f) cursorAngle += juce::MathConstants<float>::twoPi;
@@ -302,7 +300,11 @@ void SoLyPAudioProcessorEditor::sliderValueChanged(juce::Slider* slider)
         if (slider == &controlsPanel->linesSlider)
             SettingsManager::visibleLines = static_cast<int>(controlsPanel->linesSlider.getValue());
         else if (slider == &controlsPanel->fontSizeSlider)
+        {
             SettingsManager::fontSize = static_cast<float>(controlsPanel->fontSizeSlider.getValue());
+            updateLineCount();
+            SettingsManager::visibleLines = static_cast<int>(controlsPanel->linesSlider.getValue());
+        }
     }
 
     SettingsManager::save();
@@ -376,6 +378,8 @@ void SoLyPAudioProcessorEditor::resized()
     if (controlsPanel != nullptr)
         controlsPanel->setBounds(getWidth() - ControlsPanel::compWidth - 8, 8,
                                  ControlsPanel::compWidth, ControlsPanel::compHeight);
+
+    updateLineCount();
 
     repaint();
 }
@@ -648,4 +652,16 @@ void SoLyPAudioProcessorEditor::paintCursor(juce::Graphics& g)
 void SoLyPAudioProcessorEditor::resetCursorState()
 {
     lastCursorEnabled = false;
+}
+
+void SoLyPAudioProcessorEditor::updateLineCount()
+{
+    if (controlsPanel == nullptr) return;
+
+    const auto& song = processor.getCurrentSong();
+    if (song.sections.isEmpty()) return;
+
+    int fitting = calcFittingLines(getHeight(), SettingsManager::fontSize, song);
+    int newVal = juce::jmin((int)controlsPanel->linesSlider.getValue(), fitting);
+    controlsPanel->linesSlider.setValue((double)newVal, juce::dontSendNotification);
 }

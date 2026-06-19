@@ -5,3 +5,4 @@
 
 juce::String getDefaultSongDir();
 juce::String songToText(const Song& song);
+int calcFittingLines(int height, float fontSize, const Song& song);
