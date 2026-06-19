@@ -233,6 +233,7 @@ void SoLyPAudioProcessorEditor::doSave(const juce::String& name, const juce::Str
                 file.replaceWithText(jsonText, false, false, "\n");
                 processor.loadSong(song);
                 textModified = false;
+                pendingChanges = false;
                 exitEditMode();
             }));
         return;
@@ -241,6 +242,7 @@ void SoLyPAudioProcessorEditor::doSave(const juce::String& name, const juce::Str
     file.replaceWithText(jsonText, false, false, "\n");
     processor.loadSong(song);
     textModified = false;
+    pendingChanges = false;
     exitEditMode();
 }
 
@@ -266,9 +268,40 @@ void SoLyPAudioProcessorEditor::loadSongFromFile()
                 repaint();
                 return;
             }
-            if (song.fileTitle.isEmpty())
-                song.fileTitle = file.getFileNameWithoutExtension();
-            processor.loadSong(song);
-            if (editMode) exitEditMode();
+
+            if (textModified)
+            {
+                auto* alert = new juce::AlertWindow(
+                    I18n::get("confirm.unsaved"),
+                    I18n::get("confirm.loadFile"),
+                    juce::AlertWindow::QuestionIcon);
+                alert->setColour(juce::AlertWindow::backgroundColourId, Theme::bgPanel);
+                alert->setColour(juce::AlertWindow::textColourId, Theme::textPrimary);
+                alert->setColour(juce::AlertWindow::outlineColourId, Theme::accentBorder);
+                alert->addButton("OK", 1, juce::KeyPress(juce::KeyPress::returnKey));
+                alert->addButton(juce::String::fromUTF8("Отмена"), 0,
+                    juce::KeyPress(juce::KeyPress::escapeKey));
+                alert->enterModalState(true,
+                    juce::ModalCallbackFunction::create(
+                        [this, alert, song, file](int r) mutable {
+                            if (r != 1) { delete alert; return; }
+                            delete alert;
+                            applySongLoad(song, file);
+                        }));
+            }
+            else
+            {
+                applySongLoad(song, file);
+            }
         });
+}
+
+void SoLyPAudioProcessorEditor::applySongLoad(Song& song, const juce::File& file)
+{
+    if (song.fileTitle.isEmpty())
+        song.fileTitle = file.getFileNameWithoutExtension();
+    processor.loadSong(song);
+    pendingChanges = false;
+    if (editMode)
+        textEditor->setText(songToText(song), juce::dontSendNotification);
 }

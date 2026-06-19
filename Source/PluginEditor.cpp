@@ -99,7 +99,7 @@ SoLyPAudioProcessorEditor::SoLyPAudioProcessorEditor(SoLyPAudioProcessor& p)
     textEditor->setColour(juce::TextEditor::highlightedTextColourId, Theme::editorHighlightedText);
     textEditor->setColour(juce::TextEditor::outlineColourId,         Theme::editorOutline);
     textEditor->setVisible(false);
-    textEditor->onTextChange = [this] { if (editMode) textModified = true; };
+    textEditor->onTextChange = [this] { if (editMode) { textModified = true; pendingChanges = true; } };
     addAndMakeVisible(textEditor.get());
 
     // settings button in editor (gear icon)
@@ -207,7 +207,12 @@ void SoLyPAudioProcessorEditor::timerCallback()
 
     cursorAngle -= 0.005f * powf(1.3f, (float)(SettingsManager::cursorRotSpeed - 1));
     if (cursorAngle < 0.0f) cursorAngle += juce::MathConstants<float>::twoPi;
-    repaint();
+
+    int sz = SettingsManager::cursorSize + 4;
+    static juce::Point<int> prevPos;
+    repaint(juce::Rectangle<int>(prevPos.x - sz, prevPos.y - sz, sz * 2, sz * 2));
+    repaint(juce::Rectangle<int>(mousePos.x - sz, mousePos.y - sz, sz * 2, sz * 2));
+    prevPos = mousePos;
 }
 
 void SoLyPAudioProcessorEditor::mouseMove(const juce::MouseEvent& e)
@@ -235,7 +240,7 @@ void SoLyPAudioProcessorEditor::buttonClicked(juce::Button* btn)
         if (textModified)
         {
             auto* alert = new juce::AlertWindow(I18n::get("confirm.unsaved"),
-                I18n::get("confirm.unsavedText"), juce::AlertWindow::QuestionIcon);
+                I18n::get("confirm.newText"), juce::AlertWindow::QuestionIcon);
             alert->setColour(juce::AlertWindow::backgroundColourId, Theme::bgPanel);
             alert->setColour(juce::AlertWindow::textColourId, Theme::textPrimary);
             alert->setColour(juce::AlertWindow::outlineColourId, Theme::accentBorder);
@@ -265,7 +270,7 @@ void SoLyPAudioProcessorEditor::buttonClicked(juce::Button* btn)
         if (textModified)
         {
             auto* alert = new juce::AlertWindow(I18n::get("confirm.unsaved"),
-                I18n::get("confirm.unsavedText"), juce::AlertWindow::QuestionIcon);
+                I18n::get("confirm.newText"), juce::AlertWindow::QuestionIcon);
             alert->setColour(juce::AlertWindow::backgroundColourId, Theme::bgPanel);
             alert->setColour(juce::AlertWindow::textColourId, Theme::textPrimary);
             alert->setColour(juce::AlertWindow::outlineColourId, Theme::accentBorder);
@@ -384,15 +389,10 @@ void SoLyPAudioProcessorEditor::mouseDown(const juce::MouseEvent&)
 void SoLyPAudioProcessorEditor::enterEditMode(bool blank)
 {
     editMode = true;
-    textModified = false;
     if (leftPanel != nullptr) leftPanel->setVisible(false);
     if (controlsPanel != nullptr) controlsPanel->setVisible(false);
 
     const auto& song = processor.getCurrentSong();
-    if (blank || song.sections.isEmpty())
-        textEditor->setText(I18n::get("editor.placeholder"));
-    else
-        textEditor->setText(songToText(song));
 
     textEditor->setVisible(true);
     saveButton.setVisible(true);
@@ -401,12 +401,21 @@ void SoLyPAudioProcessorEditor::enterEditMode(bool blank)
     editModeNewButton.setVisible(true);
     settingsEditBtn.setVisible(true);
     resized();
+
+    if (blank || song.sections.isEmpty())
+        textEditor->setText(I18n::get("editor.placeholder"), juce::dontSendNotification);
+    else if (!pendingChanges)
+        textEditor->setText(songToText(song), juce::dontSendNotification);
+
     textEditor->grabKeyboardFocus();
+    resetCursorState();
 }
 
 void SoLyPAudioProcessorEditor::exitEditMode()
 {
     editMode = false;
+    if (textModified)
+        processor.loadSong(Song::fromText(textEditor->getText()));
     if (leftPanel != nullptr) leftPanel->setVisible(true);
     if (controlsPanel != nullptr) controlsPanel->setVisible(true);
     textEditor->setVisible(false);
@@ -417,6 +426,7 @@ void SoLyPAudioProcessorEditor::exitEditMode()
     settingsEditBtn.setVisible(false);
     resized();
     grabKeyboardFocus();
+    resetCursorState();
 }
 
 // ── settings mode ───────────────────────────────────────────────────────────
@@ -428,6 +438,8 @@ void SoLyPAudioProcessorEditor::enterSettingsMode()
     if (editMode)
     {
         editMode = false;
+        if (textModified)
+            processor.loadSong(Song::fromText(textEditor->getText()));
         textEditor->setVisible(false);
         saveButton.setVisible(false);
         backButton.setVisible(false);
@@ -447,6 +459,7 @@ void SoLyPAudioProcessorEditor::enterSettingsMode()
     settingsComponent = std::make_unique<SettingsComponent>([this] { onLanguageChanged(); });
     addAndMakeVisible(settingsComponent.get());
     resized();
+    resetCursorState();
 }
 
 void SoLyPAudioProcessorEditor::exitSettingsMode()
@@ -461,6 +474,7 @@ void SoLyPAudioProcessorEditor::exitSettingsMode()
     if (auto* top = getTopLevelComponent())
         top->setAlwaysOnTop(SettingsManager::alwaysOnTop);
     resized();
+    resetCursorState();
 }
 
 void SoLyPAudioProcessorEditor::onLanguageChanged()
@@ -541,43 +555,44 @@ void SoLyPAudioProcessorEditor::showSaveDialog()
 
 void SoLyPAudioProcessorEditor::paintCursor(juce::Graphics& g)
 {
-    if (!SettingsManager::cursorEnabled)
+    bool curEnabled = SettingsManager::cursorEnabled;
+
+    if (curEnabled != lastCursorEnabled)
     {
-        setMouseCursor(juce::MouseCursor::NormalCursor);
-        std::function<void(juce::Component*)> restore;
-        restore = [&](juce::Component* c) {
-            c->setMouseCursor(juce::MouseCursor::NormalCursor);
+        lastCursorEnabled = curEnabled;
+
+        std::function<void(juce::Component*)> applyCursor;
+        applyCursor = [&](juce::Component* c) {
+            if (dynamic_cast<juce::TextEditor*>(c) != nullptr)
+                return;
+            c->setMouseCursor(curEnabled ? juce::MouseCursor::NoCursor
+                                         : juce::MouseCursor::NormalCursor);
             for (auto* child : c->getChildren())
-                restore(child);
+                applyCursor(child);
         };
-        restore(this);
-        return;
-    }
+        applyCursor(this);
 
-    std::function<void(juce::Component*)> setAll;
-    setAll = [&](juce::Component* c) {
-        if (dynamic_cast<juce::TextEditor*>(c) == nullptr)
-            c->setMouseCursor(juce::MouseCursor::NoCursor);
-        for (auto* child : c->getChildren())
-            setAll(child);
-    };
-    setAll(this);
-
-    // force NoCursor on save dialog (all children, including TextEditor fields)
-    for (auto* child : getChildren())
-    {
-        if (dynamic_cast<SaveDialogComponent*>(child) != nullptr
-            || dynamic_cast<juce::AlertWindow*>(child) != nullptr)
+        // force NoCursor on dialogs/alerts (including their TextEditor fields)
+        if (curEnabled)
         {
-            std::function<void(juce::Component*)> setDialog;
-            setDialog = [&](juce::Component* c) {
-                c->setMouseCursor(juce::MouseCursor::NoCursor);
-                for (auto* gc : c->getChildren())
-                    setDialog(gc);
-            };
-            setDialog(child);
+            for (auto* child : getChildren())
+            {
+                if (dynamic_cast<SaveDialogComponent*>(child) != nullptr
+                    || dynamic_cast<juce::AlertWindow*>(child) != nullptr)
+                {
+                    std::function<void(juce::Component*)> setDialog;
+                    setDialog = [&](juce::Component* c) {
+                        c->setMouseCursor(juce::MouseCursor::NoCursor);
+                        for (auto* gc : c->getChildren())
+                            setDialog(gc);
+                    };
+                    setDialog(child);
+                }
+            }
         }
     }
+
+    if (!curEnabled) return;
 
     // don't draw over text editor
     {
@@ -628,4 +643,9 @@ void SoLyPAudioProcessorEditor::paintCursor(juce::Graphics& g)
     g.setOpacity(0.7f);
     drawable->draw(g, 1.0f);
     g.restoreState();
+}
+
+void SoLyPAudioProcessorEditor::resetCursorState()
+{
+    lastCursorEnabled = false;
 }

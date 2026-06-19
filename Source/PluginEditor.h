@@ -25,6 +25,7 @@ public:
     void mouseDown(const juce::MouseEvent&) override;
     void mouseMove(const juce::MouseEvent&) override;
     void mouseExit(const juce::MouseEvent&) override;
+    bool isTextModified() const { return pendingChanges; }
 
 private:
     void timerCallback() override;
@@ -35,10 +36,12 @@ private:
     void paintPauseOverlay(juce::Graphics& g);
     void paintError(juce::Graphics& g);
     void paintCursor(juce::Graphics& g);
+    void resetCursorState();
 
     void showSaveDialog();
     void doSave(const juce::String& filename, const juce::String& songTitle);
     void loadSongFromFile();
+    void applySongLoad(Song& song, const juce::File& file);
 
     void enterEditMode(bool blank = false);
     void exitEditMode();
@@ -76,6 +79,7 @@ private:
 
     bool languageChangeGuard = false;
     bool textModified = false;
+    bool pendingChanges = false;
     juce::String originalText;
 
     // tooltips
@@ -87,6 +91,7 @@ private:
     juce::Point<int> mousePos;
     juce::String cssCursorColor;
     int cssCursorShape = -1;
+    bool lastCursorEnabled = false;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SoLyPAudioProcessorEditor)
 };

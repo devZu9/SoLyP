@@ -28,6 +28,7 @@ set(SoLyP_SOURCES
     Source/UI/SettingsCard.cpp
     Source/UI/SettingsComponent.cpp
     Source/UI/Theme.cpp
+    Source/Standalone/StandaloneMain.cpp
 )
 
 juce_add_plugin(SoLyP
@@ -46,6 +47,7 @@ juce_add_plugin(SoLyP
 )
 
 target_sources(SoLyP PRIVATE ${SoLyP_SOURCES})
+target_compile_definitions(SoLyP PRIVATE JUCE_USE_CUSTOM_PLUGIN_STANDALONE_APP=1)
 target_include_directories(SoLyP PRIVATE Source)
 target_link_libraries(SoLyP PRIVATE juce::juce_audio_utils juce::juce_audio_devices)
 

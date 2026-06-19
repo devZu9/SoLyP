@@ -80,6 +80,8 @@
     "cursor.triangle": "Треугольник",
     "cursor.square": "Квадрат",
     "cursor.color": "Цвет курсора",
-    "confirm.unsaved": "Есть несохранённые изменения",
-    "confirm.unsavedText": "Изменения будут потеряны. Создать новый текст?"
+    "confirm.unsaved": "Изменения не сохранены",
+    "confirm.newText": "Создать новый текст?",
+    "confirm.loadFile": "Загрузить другой файл?",
+    "confirm.closeApp": "Закрыть приложение?"
 }

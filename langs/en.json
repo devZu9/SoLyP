@@ -81,5 +81,7 @@
     "cursor.square": "Square",
     "cursor.color": "Cursor color",
     "confirm.unsaved": "Unsaved changes",
-    "confirm.unsavedText": "Changes will be lost. Create new text?"
+    "confirm.newText": "Create new text?",
+    "confirm.loadFile": "Load another file?",
+    "confirm.closeApp": "Close the application?"
 }
