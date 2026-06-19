@@ -3,7 +3,8 @@
     "button.edit": "Edit",
     "button.load": "Load",
     "button.save": "Save",
-    "button.back": "Back",
+    "button.back": "Return to title display",
+    "button.new": "New text",
     "button.cancel": "Cancel",
     "panel.lines": "Lines:",
     "panel.size": "Size:",
@@ -66,6 +67,7 @@
     "settings.noteB": "B",
     "settings.channel": "Channel",
     "settings.languageChanged": "Interface language will fully update\nwhen you re-open Settings",
+    "settings.go": "Go to settings",
     "cursor.title": "Cursor",
     "cursor.enable": "Custom cursor",
     "cursor.shape": "Cursor shape",
@@ -77,5 +79,7 @@
     "cursor.speed": "Rotation speed",
     "cursor.triangle": "Triangle",
     "cursor.square": "Square",
-    "cursor.color": "Cursor color"
+    "cursor.color": "Cursor color",
+    "confirm.unsaved": "Unsaved changes",
+    "confirm.unsavedText": "Changes will be lost. Create new text?"
 }

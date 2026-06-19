@@ -40,7 +40,7 @@ private:
     void doSave(const juce::String& filename, const juce::String& songTitle);
     void loadSongFromFile();
 
-    void enterEditMode();
+    void enterEditMode(bool blank = false);
     void exitEditMode();
     void enterSettingsMode();
     void exitSettingsMode();
@@ -54,9 +54,10 @@ private:
     // edit mode
     bool editMode = false;
     std::unique_ptr<juce::TextEditor> textEditor;
-    juce::TextButton saveButton{ "" };
-    juce::TextButton backButton{ "" };
-    juce::TextButton editModeLoadButton{ "" };
+    juce::DrawableButton saveButton{ "", juce::DrawableButton::ImageFitted };
+    juce::DrawableButton backButton{ "", juce::DrawableButton::ImageFitted };
+    juce::DrawableButton editModeLoadButton{ "", juce::DrawableButton::ImageFitted };
+    juce::DrawableButton editModeNewButton{ "", juce::DrawableButton::ImageFitted };
 
     // settings mode
     bool settingsMode = false;
@@ -74,6 +75,11 @@ private:
     std::unique_ptr<ControlsPanel> controlsPanel;
 
     bool languageChangeGuard = false;
+    bool textModified = false;
+    juce::String originalText;
+
+    // tooltips
+    juce::TooltipWindow tooltipWindow{ this, 500 };
 
     // cursor
     std::unique_ptr<juce::Drawable> cursorTri, cursorSq;

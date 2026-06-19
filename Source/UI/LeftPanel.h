@@ -13,8 +13,9 @@ public:
     void mouseExit(const juce::MouseEvent&) override;
     void mouseMove(const juce::MouseEvent&) override;
 
-    juce::TextButton editButton{ "" };
-    juce::TextButton loadButton{ "" };
+    juce::DrawableButton editButton{ "", juce::DrawableButton::ImageFitted };
+    juce::DrawableButton loadButton{ "", juce::DrawableButton::ImageFitted };
+    juce::DrawableButton newButton{ "", juce::DrawableButton::ImageFitted };
     juce::DrawableButton settingsBtn{ "", juce::DrawableButton::ImageFitted };
 
     static constexpr int iconSize = 36;

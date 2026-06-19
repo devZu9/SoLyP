@@ -3,7 +3,8 @@
     "button.edit": "Редактор",
     "button.load": "Загрузить",
     "button.save": "Сохранить",
-    "button.back": "Назад",
+    "button.back": "Вернуться на страницу показа титров",
+    "button.new": "Новый текст",
     "button.cancel": "Отмена",
     "panel.lines": "Строки:",
     "panel.size": "Размер:",
@@ -66,6 +67,7 @@
     "settings.noteB": "B",
     "settings.channel": "Канал",
     "settings.languageChanged": "Язык интерфейса обновится полностью\nпри повторном открытии настроек",
+    "settings.go": "Переход в настройки",
     "cursor.title": "Курсор",
     "cursor.enable": "Свой курсор",
     "cursor.shape": "Форма курсора",
@@ -77,5 +79,7 @@
     "cursor.speed": "Скорость вращения",
     "cursor.triangle": "Треугольник",
     "cursor.square": "Квадрат",
-    "cursor.color": "Цвет курсора"
+    "cursor.color": "Цвет курсора",
+    "confirm.unsaved": "Есть несохранённые изменения",
+    "confirm.unsavedText": "Изменения будут потеряны. Создать новый текст?"
 }

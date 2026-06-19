@@ -99,30 +99,8 @@ SoLyPAudioProcessorEditor::SoLyPAudioProcessorEditor(SoLyPAudioProcessor& p)
     textEditor->setColour(juce::TextEditor::highlightedTextColourId, Theme::editorHighlightedText);
     textEditor->setColour(juce::TextEditor::outlineColourId,         Theme::editorOutline);
     textEditor->setVisible(false);
+    textEditor->onTextChange = [this] { if (editMode) textModified = true; };
     addAndMakeVisible(textEditor.get());
-
-    auto styleBtn = [](juce::TextButton& btn) {
-        btn.setColour(juce::TextButton::buttonColourId, Theme::bgButton);
-        btn.setColour(juce::TextButton::textColourOffId, Theme::textPrimary);
-        btn.setColour(juce::TextButton::textColourOnId, Theme::textOnButton);
-    };
-
-    saveButton.setButtonText(I18n::get("button.save"));
-    backButton.setButtonText(I18n::get("button.back"));
-    editModeLoadButton.setButtonText(I18n::get("button.load"));
-
-    saveButton.setVisible(false);
-    backButton.setVisible(false);
-    editModeLoadButton.setVisible(false);
-    styleBtn(saveButton);
-    styleBtn(backButton);
-    styleBtn(editModeLoadButton);
-    addAndMakeVisible(saveButton);
-    addAndMakeVisible(backButton);
-    addAndMakeVisible(editModeLoadButton);
-    saveButton.addListener(this);
-    backButton.addListener(this);
-    editModeLoadButton.addListener(this);
 
     // settings button in editor (gear icon)
     auto gearSvg = juce::String(Icons::gear).replace("#000000", "#" + Theme::iconPrimary.toDisplayString(false));
@@ -139,12 +117,38 @@ SoLyPAudioProcessorEditor::SoLyPAudioProcessorEditor(SoLyPAudioProcessor& p)
     settingsEditBtn.setColour(juce::DrawableButton::backgroundOnColourId, Theme::bgButtonHover);
     settingsEditBtn.setVisible(false);
     settingsEditBtn.addListener(this);
+    settingsEditBtn.setTooltip(I18n::get("settings.go"));
+
+    // edit mode icon buttons
+    auto setupIconBtn = [&](juce::DrawableButton& btn, const char* svgData, const juce::String& tooltip) {
+        auto svg = juce::String(svgData).replace("#000000", "#" + Theme::iconPrimary.toDisplayString(false));
+        auto hoverSvg = juce::String(svgData).replace("#000000", "#" + Theme::iconHover.toDisplayString(false));
+        auto xml = juce::XmlDocument::parse(svg);
+        auto hoverXml = juce::XmlDocument::parse(hoverSvg);
+        if (xml && hoverXml) {
+            auto normal = juce::Drawable::createFromSVG(*xml);
+            auto hover = juce::Drawable::createFromSVG(*hoverXml);
+            btn.setImages(normal.get(), hover.get());
+        }
+        btn.setVisible(false);
+        btn.setColour(juce::DrawableButton::backgroundColourId, juce::Colours::transparentBlack);
+        btn.setColour(juce::DrawableButton::backgroundOnColourId, Theme::bgButtonHover);
+        btn.setTooltip(tooltip);
+        addAndMakeVisible(btn);
+        btn.addListener(this);
+    };
+
+    setupIconBtn(backButton, Icons::arrowCircleLeft, I18n::get("button.back"));
+    setupIconBtn(editModeLoadButton, Icons::folderOpen, I18n::get("button.load"));
+    setupIconBtn(editModeNewButton, Icons::filePlus, I18n::get("button.new"));
+    setupIconBtn(saveButton, Icons::trayArrowDown, I18n::get("button.save"));
     addAndMakeVisible(settingsEditBtn);
 
     // left panel
     leftPanel = std::make_unique<LeftPanel>();
-    leftPanel->editButton.addListener(this);
     leftPanel->loadButton.addListener(this);
+    leftPanel->newButton.addListener(this);
+    leftPanel->editButton.addListener(this);
     leftPanel->settingsBtn.addListener(this);
     leftPanel->setBounds(8, 8, leftPanel->getRequiredWidth(), LeftPanel::compHeight);
     addAndMakeVisible(leftPanel.get());
@@ -211,10 +215,7 @@ void SoLyPAudioProcessorEditor::mouseMove(const juce::MouseEvent& e)
     if (editMode) return;
     mousePos = e.getPosition();
 }
-void SoLyPAudioProcessorEditor::mouseExit(const juce::MouseEvent&)
-{
-    mousePos = {};
-}
+void SoLyPAudioProcessorEditor::mouseExit(const juce::MouseEvent&) {}
 
 void SoLyPAudioProcessorEditor::buttonClicked(juce::Button* btn)
 {
@@ -229,6 +230,25 @@ void SoLyPAudioProcessorEditor::buttonClicked(juce::Button* btn)
     }
     else if (btn == &editModeLoadButton)
         loadSongFromFile();
+    else if (btn == &editModeNewButton)
+    {
+        if (textModified)
+        {
+            auto* alert = new juce::AlertWindow(I18n::get("confirm.unsaved"),
+                I18n::get("confirm.unsavedText"), juce::AlertWindow::QuestionIcon);
+            alert->setColour(juce::AlertWindow::backgroundColourId, Theme::bgPanel);
+            alert->setColour(juce::AlertWindow::textColourId, Theme::textPrimary);
+            alert->setColour(juce::AlertWindow::outlineColourId, Theme::accentBorder);
+            alert->addButton("OK", 1, juce::KeyPress(juce::KeyPress::returnKey));
+            alert->addButton(juce::String::fromUTF8("Отмена"), 0, juce::KeyPress(juce::KeyPress::escapeKey));
+            alert->enterModalState(true, juce::ModalCallbackFunction::create([this, alert](int r) {
+                if (r == 1) textEditor->setText(I18n::get("editor.placeholder"));
+                delete alert;
+            }));
+        }
+        else
+            textEditor->setText(I18n::get("editor.placeholder"));
+    }
     else if (btn == &leftPanel->editButton)
     {
         leftPanel->setHovered(false);
@@ -238,6 +258,26 @@ void SoLyPAudioProcessorEditor::buttonClicked(juce::Button* btn)
     {
         leftPanel->setHovered(false);
         loadSongFromFile();
+    }
+    else if (btn == &leftPanel->newButton)
+    {
+        leftPanel->setHovered(false);
+        if (textModified)
+        {
+            auto* alert = new juce::AlertWindow(I18n::get("confirm.unsaved"),
+                I18n::get("confirm.unsavedText"), juce::AlertWindow::QuestionIcon);
+            alert->setColour(juce::AlertWindow::backgroundColourId, Theme::bgPanel);
+            alert->setColour(juce::AlertWindow::textColourId, Theme::textPrimary);
+            alert->setColour(juce::AlertWindow::outlineColourId, Theme::accentBorder);
+            alert->addButton("OK", 1, juce::KeyPress(juce::KeyPress::returnKey));
+            alert->addButton(juce::String::fromUTF8("Отмена"), 0, juce::KeyPress(juce::KeyPress::escapeKey));
+            alert->enterModalState(true, juce::ModalCallbackFunction::create([this, alert](int r) {
+                if (r == 1) enterEditMode(true);
+                delete alert;
+            }));
+        }
+        else
+            enterEditMode(true);
     }
     else if (btn == &leftPanel->settingsBtn)
     {
@@ -296,7 +336,8 @@ void SoLyPAudioProcessorEditor::resized()
     {
         auto area = getLocalBounds().reduced(10);
         auto buttonBar = area.removeFromTop(40);
-        backButton.setBounds(buttonBar.removeFromLeft(100).reduced(4));
+        int gs = 28;
+        backButton.setBounds(buttonBar.removeFromLeft(gs).withSizeKeepingCentre(gs, gs));
         if (settingsComponent != nullptr)
             settingsComponent->setBounds(area);
         return;
@@ -306,11 +347,15 @@ void SoLyPAudioProcessorEditor::resized()
     {
         auto area = getLocalBounds().reduced(10);
         auto buttonBar = area.removeFromTop(40);
-        backButton.setBounds(buttonBar.removeFromLeft(100).reduced(4));
-        editModeLoadButton.setBounds(buttonBar.removeFromLeft(100).reduced(4));
-        saveButton.setBounds(buttonBar.removeFromLeft(100).reduced(4));
-        // gear button — right-aligned
         int gs = 28;
+        int gap = 8;
+        backButton.setBounds(buttonBar.removeFromLeft(gs).withSizeKeepingCentre(gs, gs));
+        buttonBar.removeFromLeft(gap);
+        editModeLoadButton.setBounds(buttonBar.removeFromLeft(gs).withSizeKeepingCentre(gs, gs));
+        buttonBar.removeFromLeft(gap);
+        editModeNewButton.setBounds(buttonBar.removeFromLeft(gs).withSizeKeepingCentre(gs, gs));
+        buttonBar.removeFromLeft(gap);
+        saveButton.setBounds(buttonBar.removeFromLeft(gs).withSizeKeepingCentre(gs, gs));
         settingsEditBtn.setBounds(buttonBar.getRight() - gs - 4,
                                   buttonBar.getY() + (buttonBar.getHeight() - gs) / 2,
                                   gs, gs);
@@ -336,14 +381,15 @@ void SoLyPAudioProcessorEditor::mouseDown(const juce::MouseEvent&)
 
 // ── edit mode ───────────────────────────────────────────────────────────────
 
-void SoLyPAudioProcessorEditor::enterEditMode()
+void SoLyPAudioProcessorEditor::enterEditMode(bool blank)
 {
     editMode = true;
+    textModified = false;
     if (leftPanel != nullptr) leftPanel->setVisible(false);
     if (controlsPanel != nullptr) controlsPanel->setVisible(false);
 
     const auto& song = processor.getCurrentSong();
-    if (song.sections.isEmpty())
+    if (blank || song.sections.isEmpty())
         textEditor->setText(I18n::get("editor.placeholder"));
     else
         textEditor->setText(songToText(song));
@@ -352,6 +398,7 @@ void SoLyPAudioProcessorEditor::enterEditMode()
     saveButton.setVisible(true);
     backButton.setVisible(true);
     editModeLoadButton.setVisible(true);
+    editModeNewButton.setVisible(true);
     settingsEditBtn.setVisible(true);
     resized();
     textEditor->grabKeyboardFocus();
@@ -366,6 +413,7 @@ void SoLyPAudioProcessorEditor::exitEditMode()
     saveButton.setVisible(false);
     backButton.setVisible(false);
     editModeLoadButton.setVisible(false);
+    editModeNewButton.setVisible(false);
     settingsEditBtn.setVisible(false);
     resized();
     grabKeyboardFocus();
@@ -384,6 +432,7 @@ void SoLyPAudioProcessorEditor::enterSettingsMode()
         saveButton.setVisible(false);
         backButton.setVisible(false);
         editModeLoadButton.setVisible(false);
+        editModeNewButton.setVisible(false);
         settingsEditBtn.setVisible(false);
     }
     else
@@ -393,7 +442,6 @@ void SoLyPAudioProcessorEditor::enterSettingsMode()
     }
 
     // show back button for returning from settings
-    backButton.setButtonText(I18n::get("button.back"));
     backButton.setVisible(true);
 
     settingsComponent = std::make_unique<SettingsComponent>([this] { onLanguageChanged(); });
@@ -420,12 +468,14 @@ void SoLyPAudioProcessorEditor::onLanguageChanged()
     if (languageChangeGuard) return;
     languageChangeGuard = true;
 
-    saveButton.setButtonText(I18n::get("button.save"));
-    backButton.setButtonText(I18n::get("button.back"));
-    editModeLoadButton.setButtonText(I18n::get("button.load"));
-
     if (leftPanel != nullptr)
         leftPanel->refreshText();
+
+    backButton.setTooltip(I18n::get("button.back"));
+    saveButton.setTooltip(I18n::get("button.save"));
+    editModeLoadButton.setTooltip(I18n::get("button.load"));
+    editModeNewButton.setTooltip(I18n::get("button.new"));
+    settingsEditBtn.setTooltip(I18n::get("settings.go"));
 
     repaint();
 
@@ -479,6 +529,8 @@ void SoLyPAudioProcessorEditor::showSaveDialog()
     );
     addAndMakeVisible(dialog);
     dialog->setBounds(getLocalBounds());
+    if (SettingsManager::cursorEnabled)
+        dialog->setMouseCursor(juce::MouseCursor::NoCursor);
     dialog->activateModal([this, dialog] {
         juce::MessageManager::callAsync([this, dialog] {
             removeChildComponent(dialog);
@@ -511,10 +563,35 @@ void SoLyPAudioProcessorEditor::paintCursor(juce::Graphics& g)
     };
     setAll(this);
 
+    // force NoCursor on save dialog (all children, including TextEditor fields)
+    for (auto* child : getChildren())
+    {
+        if (dynamic_cast<SaveDialogComponent*>(child) != nullptr
+            || dynamic_cast<juce::AlertWindow*>(child) != nullptr)
+        {
+            std::function<void(juce::Component*)> setDialog;
+            setDialog = [&](juce::Component* c) {
+                c->setMouseCursor(juce::MouseCursor::NoCursor);
+                for (auto* gc : c->getChildren())
+                    setDialog(gc);
+            };
+            setDialog(child);
+        }
+    }
+
     // don't draw over text editor
-    if (textEditor && textEditor->isVisible() && textEditor->getScreenBounds().contains(
-        juce::Desktop::getInstance().getMousePosition()))
-        return;
+    {
+        bool hasDialog = false;
+        for (auto* child : getChildren())
+            if (dynamic_cast<SaveDialogComponent*>(child) != nullptr
+                || dynamic_cast<juce::AlertWindow*>(child) != nullptr)
+                { hasDialog = true; break; }
+
+        if (!hasDialog && textEditor && textEditor->isVisible()
+            && textEditor->getScreenBounds().contains(
+                juce::Desktop::getInstance().getMousePosition()))
+            return;
+    }
 
     // reload drawables if color changed
     if (SettingsManager::cursorColor != cssCursorColor || SettingsManager::cursorShape != cssCursorShape)
@@ -531,7 +608,10 @@ void SoLyPAudioProcessorEditor::paintCursor(juce::Graphics& g)
 
     auto* drawable = (SettingsManager::cursorShape == 0) ? cursorTri.get() : cursorSq.get();
     if (!drawable) return;
-    if (!getLocalBounds().contains(mousePos)) return;
+
+    auto screenPos = juce::Desktop::getInstance().getMousePosition();
+    auto pos = getLocalPoint(nullptr, screenPos);
+    if (!getLocalBounds().contains(pos)) return;
 
     float sz = (float)SettingsManager::cursorSize;
     float scale = sz / 100.0f;
@@ -541,7 +621,7 @@ void SoLyPAudioProcessorEditor::paintCursor(juce::Graphics& g)
         angle = -angle;
 
     g.saveState();
-    g.addTransform(juce::AffineTransform::translation((float)mousePos.x, (float)mousePos.y));
+    g.addTransform(juce::AffineTransform::translation((float)pos.x, (float)pos.y));
     g.addTransform(juce::AffineTransform::rotation(angle));
     g.addTransform(juce::AffineTransform::scale(scale));
     g.addTransform(juce::AffineTransform::translation(-50.0f, -50.0f));

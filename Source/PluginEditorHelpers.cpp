@@ -232,6 +232,7 @@ void SoLyPAudioProcessorEditor::doSave(const juce::String& name, const juce::Str
                 if (result != 1) return;
                 file.replaceWithText(jsonText, false, false, "\n");
                 processor.loadSong(song);
+                textModified = false;
                 exitEditMode();
             }));
         return;
@@ -239,6 +240,7 @@ void SoLyPAudioProcessorEditor::doSave(const juce::String& name, const juce::Str
 
     file.replaceWithText(jsonText, false, false, "\n");
     processor.loadSong(song);
+    textModified = false;
     exitEditMode();
 }
 

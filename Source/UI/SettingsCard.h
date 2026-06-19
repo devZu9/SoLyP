@@ -12,6 +12,7 @@ public:
     juce::ComboBox* addCombo(const juce::String& labelKey);
     juce::Slider*   addSlider(const juce::String& labelKey, double min, double max, double step);
     juce::ToggleButton* addToggle(const juce::String& labelKey);
+    void addToggleWithInfo(const juce::String& labelKey, juce::ToggleButton*& outToggle, juce::DrawableButton*& outInfo);
     juce::TextButton* addButton(const juce::String& labelKey);
     void addRadioPair(const juce::String& labelKey, const juce::String& opt1, const juce::String& opt2,
                       juce::ToggleButton*& out1, juce::ToggleButton*& out2);
@@ -28,6 +29,7 @@ private:
         juce::Component* control = nullptr;
         juce::Component* control2 = nullptr;
         bool isPair = false;
+        bool isInfoPair = false;
         bool isSeparator = false;
     };
     std::vector<Row> rows;

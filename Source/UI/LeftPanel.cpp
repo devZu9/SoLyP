@@ -3,30 +3,34 @@
 #include "Theme.h"
 #include "../Data/I18n.h"
 
-namespace
-{
-    int calcBtnWidth(int chars)
-    {
-        static const int cw = []{
-            juce::Font f(juce::FontOptions(13.0f));
-            juce::GlyphArrangement ga;
-            ga.addLineOfText(f, "W", 0.0f, 0.0f);
-            return juce::roundToInt(ga.getBoundingBox(0, 1, false).getWidth());
-        }();
-        return chars * cw + 20;
-    }
-}
-
 LeftPanel::LeftPanel()
 {
-    editButton.setButtonText(I18n::get("button.edit"));
-    loadButton.setButtonText(I18n::get("button.load"));
-
     // panel icon (squares-four)
     auto panelSvg = juce::String(Icons::squaresFour).replace("#000000", "#" + Theme::iconPrimary.toDisplayString(false));
     auto panelXml = juce::XmlDocument::parse(panelSvg);
     if (panelXml != nullptr)
         iconDrawable = juce::Drawable::createFromSVG(*panelXml);
+
+    auto setupIconBtn = [&](juce::DrawableButton& btn, const char* svgData, const juce::String& tooltip) {
+        auto svg = juce::String(svgData).replace("#000000", "#" + Theme::iconPrimary.toDisplayString(false));
+        auto hoverSvg = juce::String(svgData).replace("#000000", "#" + Theme::iconHover.toDisplayString(false));
+        auto xml = juce::XmlDocument::parse(svg);
+        auto hoverXml = juce::XmlDocument::parse(hoverSvg);
+        if (xml && hoverXml) {
+            auto normal = juce::Drawable::createFromSVG(*xml);
+            auto hover = juce::Drawable::createFromSVG(*hoverXml);
+            btn.setImages(normal.get(), hover.get());
+        }
+        btn.setVisible(false);
+        btn.setColour(juce::DrawableButton::backgroundColourId, juce::Colours::transparentBlack);
+        btn.setColour(juce::DrawableButton::backgroundOnColourId, Theme::bgButtonHover);
+        btn.setTooltip(tooltip);
+        addAndMakeVisible(btn);
+    };
+
+    setupIconBtn(loadButton, Icons::folderOpen, I18n::get("button.load"));
+    setupIconBtn(newButton, Icons::filePlus, I18n::get("button.new"));
+    setupIconBtn(editButton, Icons::clipboardText, I18n::get("button.edit"));
 
     // settings icon (gear — normal + hover)
     auto gearSvg = juce::String(Icons::gear).replace("#000000", "#" + Theme::iconPrimary.toDisplayString(false));
@@ -39,23 +43,11 @@ LeftPanel::LeftPanel()
         auto gearHover  = juce::Drawable::createFromSVG(*gearHoverXml);
         settingsBtn.setImages(gearNormal.get(), gearHover.get());
     }
-
-    editButton.setVisible(false);
-    editButton.setColour(juce::TextButton::buttonColourId, Theme::bgButton);
-    editButton.setColour(juce::TextButton::textColourOnId, Theme::textOnButton);
-    editButton.setColour(juce::TextButton::textColourOffId, Theme::iconPrimary);
-    addAndMakeVisible(editButton);
-
-    loadButton.setVisible(false);
-    loadButton.setColour(juce::TextButton::buttonColourId, Theme::bgButton);
-    loadButton.setColour(juce::TextButton::textColourOnId, Theme::textOnButton);
-    loadButton.setColour(juce::TextButton::textColourOffId, Theme::iconPrimary);
-    addAndMakeVisible(loadButton);
-
     settingsBtn.setVisible(false);
     settingsBtn.setColour(juce::DrawableButton::backgroundColourId, juce::Colours::transparentBlack);
     settingsBtn.setColour(juce::DrawableButton::backgroundOnColourId, Theme::bgButtonHover);
     addAndMakeVisible(settingsBtn);
+    settingsBtn.setTooltip(I18n::get("settings.go"));
 
     repaint();
 }
@@ -93,25 +85,23 @@ void LeftPanel::resized()
 
     auto bounds = getLocalBounds().reduced(10, 12).toFloat();
 
-    float wLoad = (float)calcBtnWidth(juce::String(I18n::get("button.load")).length());
-    float wEdit = (float)calcBtnWidth(juce::String(I18n::get("button.edit")).length());
-
+    float wBtn = 28.0f;
     juce::FlexBox fb;
     fb.flexDirection = juce::FlexBox::Direction::row;
     fb.justifyContent = juce::FlexBox::JustifyContent::flexStart;
-    fb.items.add(juce::FlexItem(loadButton).withWidth(wLoad));
-    fb.items.add(juce::FlexItem(8.0f, 1.0f));
-    fb.items.add(juce::FlexItem(editButton).withWidth(wEdit));
+    fb.items.add(juce::FlexItem(loadButton).withWidth(wBtn));
     fb.items.add(juce::FlexItem(6.0f, 1.0f));
-    fb.items.add(juce::FlexItem(settingsBtn).withWidth(28.0f));
+    fb.items.add(juce::FlexItem(newButton).withWidth(wBtn));
+    fb.items.add(juce::FlexItem(6.0f, 1.0f));
+    fb.items.add(juce::FlexItem(editButton).withWidth(wBtn));
+    fb.items.add(juce::FlexItem(6.0f, 1.0f));
+    fb.items.add(juce::FlexItem(settingsBtn).withWidth(wBtn));
     fb.performLayout(bounds);
 }
 
 int LeftPanel::getRequiredWidth() const
 {
-    int wLoad = calcBtnWidth(juce::String(I18n::get("button.load")).length());
-    int wEdit = calcBtnWidth(juce::String(I18n::get("button.edit")).length());
-    return 10 + wLoad + 8 + wEdit + 6 + 28 + 10 + 8;
+    return 10 + 28 + 6 + 28 + 6 + 28 + 6 + 28 + 10 + 8;
 }
 
 void LeftPanel::mouseEnter(const juce::MouseEvent& e)
@@ -138,8 +128,9 @@ void LeftPanel::setHovered(bool h)
 {
     if (hovered == h) return;
     hovered = h;
-    editButton.setVisible(h);
     loadButton.setVisible(h);
+    newButton.setVisible(h);
+    editButton.setVisible(h);
     settingsBtn.setVisible(h);
     resized();
     repaint();
@@ -147,8 +138,8 @@ void LeftPanel::setHovered(bool h)
 
 void LeftPanel::refreshText()
 {
-    editButton.setButtonText(I18n::get("button.edit"));
-    loadButton.setButtonText(I18n::get("button.load"));
-    resized();
-    repaint();
+    loadButton.setTooltip(I18n::get("button.load"));
+    newButton.setTooltip(I18n::get("button.new"));
+    editButton.setTooltip(I18n::get("button.edit"));
+    settingsBtn.setTooltip(I18n::get("settings.go"));
 }

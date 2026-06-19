@@ -73,10 +73,19 @@ void SettingsCard::resized()
 
         if (row.isPair)
         {
-            auto half = rowArea.withWidth(rowArea.getWidth() / 2);
-            row.control->setBounds(half.reduced(4, 2));
-            if (row.control2)
-                row.control2->setBounds(half.translated((float)rowArea.getWidth() / 2, 0).reduced(4, 2));
+            if (row.isInfoPair)
+            {
+                row.control->setBounds(rowArea.removeFromLeft(30));
+                if (row.control2)
+                    row.control2->setBounds(rowArea.removeFromLeft(18).withSizeKeepingCentre(18, 18));
+            }
+            else
+            {
+                auto half = rowArea.withWidth(rowArea.getWidth() / 2);
+                row.control->setBounds(half.reduced(4, 2));
+                if (row.control2)
+                    row.control2->setBounds(half.translated((float)rowArea.getWidth() / 2, 0).reduced(4, 2));
+            }
         }
         else if (dynamic_cast<juce::ToggleButton*>(row.control) != nullptr)
             row.control->setBounds(rowArea.removeFromLeft(30));
@@ -153,6 +162,30 @@ void SettingsCard::addSeparator()
 {
     auto& row = rows.emplace_back();
     row.isSeparator = true;
+}
+
+void SettingsCard::addToggleWithInfo(const juce::String& labelText, juce::ToggleButton*& outToggle, juce::DrawableButton*& outInfo)
+{
+    auto& row = rows.emplace_back();
+    row.isPair = true;
+    row.isInfoPair = true;
+    row.label = std::make_unique<juce::Label>(juce::String(), labelText);
+    row.label->setColour(juce::Label::textColourId, Theme::textPrimary);
+    row.label->setFont(juce::FontOptions(12.0f));
+    addAndMakeVisible(row.label.get());
+
+    auto* tg = new juce::ToggleButton();
+    tg->setColour(juce::ToggleButton::tickColourId, Theme::textPrimary);
+    row.control = tg;
+    addAndMakeVisible(tg);
+
+    outInfo = new juce::DrawableButton("", juce::DrawableButton::ImageFitted);
+    outInfo->setColour(juce::DrawableButton::backgroundColourId, juce::Colours::transparentBlack);
+    outInfo->setColour(juce::DrawableButton::backgroundOnColourId, juce::Colours::transparentBlack);
+    row.control2 = outInfo;
+    addAndMakeVisible(outInfo);
+
+    outToggle = tg;
 }
 
 juce::TextButton* SettingsCard::addButton(const juce::String& labelText)

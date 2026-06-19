@@ -123,8 +123,21 @@ SettingsComponent::SettingsComponent(std::function<void()> onLangChanged)
 
         card->addSeparator();
 
-        auto* aotTg = card->addToggle(I18n::get("settings.alwaysOnTop"));
+        juce::ToggleButton* aotTg = nullptr;
+        juce::DrawableButton* aotInfo = nullptr;
+        card->addToggleWithInfo(I18n::get("settings.alwaysOnTop"), aotTg, aotInfo);
         aotTg->setToggleState(SettingsManager::alwaysOnTop, juce::dontSendNotification);
+
+        // info icon
+        auto svg = juce::String(Icons::question).replace("#000000", "#" + Theme::iconPrimary.toDisplayString(false));
+        auto xml = juce::XmlDocument::parse(svg);
+        if (xml)
+        {
+            auto drawable = juce::Drawable::createFromSVG(*xml);
+            aotInfo->setImages(drawable.get());
+            aotInfo->setTooltip(I18n::get("settings.alwaysOnTopTip"));
+        }
+
         auto* aotLabel = card->getLastLabel();
         if (aotLabel)
         {
