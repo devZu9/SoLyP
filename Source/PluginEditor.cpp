@@ -23,6 +23,21 @@ namespace
 SoLyPAudioProcessorEditor::SoLyPAudioProcessorEditor(SoLyPAudioProcessor& p)
     : AudioProcessorEditor(&p), processor(p)
 {
+    // single instance
+    {
+        static juce::InterProcessLock lock("SoLyP_SingleInstance");
+        if (!lock.enter(100))
+        {
+            juce::AlertWindow::showMessageBoxAsync(
+                juce::MessageBoxIconType::WarningIcon,
+                "SoLyP",
+                juce::String::fromUTF8("Приложение уже запущено"),
+                "OK");
+            juce::MessageManager::callAsync([] { juce::JUCEApplication::getInstance()->quit(); });
+            return;
+        }
+    }
+
     // load theme first — all Theme:: colours must be set before any widget is created
     auto themeDir = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory)
         .getChildFile("SoLyP").getChildFile("themes");
@@ -48,6 +63,8 @@ SoLyPAudioProcessorEditor::SoLyPAudioProcessorEditor(SoLyPAudioProcessor& p)
         {
             top->addComponentListener(this);
 
+            top->setAlwaysOnTop(SettingsManager::alwaysOnTop);
+
             if (processor.wrapperType == juce::AudioProcessor::wrapperType_Standalone)
             {
                 if (SettingsManager::windowX != 0 || SettingsManager::windowY != 0)
@@ -57,9 +74,17 @@ SoLyPAudioProcessorEditor::SoLyPAudioProcessorEditor(SoLyPAudioProcessor& p)
         SettingsManager::noStartSave = false;
     });
 
-    setAlwaysOnTop(true);
     setMouseClickGrabsKeyboardFocus(false);
     setWantsKeyboardFocus(true);
+    startTimerHz(20);
+
+    // load cursor SVGs
+    {
+        auto triXml = juce::XmlDocument::parse(juce::String(Icons::cursorTriangle));
+        auto sqXml  = juce::XmlDocument::parse(juce::String(Icons::cursorSquare));
+        if (triXml) cursorTri = juce::Drawable::createFromSVG(*triXml);
+        if (sqXml)  cursorSq  = juce::Drawable::createFromSVG(*sqXml);
+    }
 
     // edit mode widgets
     textEditor = std::make_unique<juce::TextEditor>();
@@ -167,12 +192,29 @@ bool SoLyPAudioProcessorEditor::keyPressed(const juce::KeyPress&)
     return false;
 }
 
+void SoLyPAudioProcessorEditor::timerCallback()
+{
+    if (!SettingsManager::cursorEnabled) return;
+
+    auto screenPos = juce::Desktop::getInstance().getMousePosition();
+    mousePos = getLocalPoint(nullptr, screenPos);
+
+    if (!getLocalBounds().contains(mousePos)) return;
+
+    cursorAngle -= 0.005f * powf(1.3f, (float)(SettingsManager::cursorRotSpeed - 1));
+    if (cursorAngle < 0.0f) cursorAngle += juce::MathConstants<float>::twoPi;
+    repaint();
+}
+
 void SoLyPAudioProcessorEditor::mouseMove(const juce::MouseEvent& e)
 {
     if (editMode) return;
-    juce::ignoreUnused(e);
+    mousePos = e.getPosition();
 }
-void SoLyPAudioProcessorEditor::mouseExit(const juce::MouseEvent&) {}
+void SoLyPAudioProcessorEditor::mouseExit(const juce::MouseEvent&)
+{
+    mousePos = {};
+}
 
 void SoLyPAudioProcessorEditor::buttonClicked(juce::Button* btn)
 {
@@ -241,8 +283,9 @@ void SoLyPAudioProcessorEditor::paint(juce::Graphics& g)
         paintError(g);
 }
 
-void SoLyPAudioProcessorEditor::paintOverChildren(juce::Graphics&)
+void SoLyPAudioProcessorEditor::paintOverChildren(juce::Graphics& g)
 {
+    paintCursor(g);
 }
 
 // ── resized ─────────────────────────────────────────────────────────────────
@@ -367,6 +410,8 @@ void SoLyPAudioProcessorEditor::exitSettingsMode()
 
     if (leftPanel != nullptr) leftPanel->setVisible(true);
     if (controlsPanel != nullptr) controlsPanel->setVisible(true);
+    if (auto* top = getTopLevelComponent())
+        top->setAlwaysOnTop(SettingsManager::alwaysOnTop);
     resized();
 }
 
@@ -440,4 +485,67 @@ void SoLyPAudioProcessorEditor::showSaveDialog()
             delete dialog;
         });
     });
+}
+
+void SoLyPAudioProcessorEditor::paintCursor(juce::Graphics& g)
+{
+    if (!SettingsManager::cursorEnabled)
+    {
+        setMouseCursor(juce::MouseCursor::NormalCursor);
+        std::function<void(juce::Component*)> restore;
+        restore = [&](juce::Component* c) {
+            c->setMouseCursor(juce::MouseCursor::NormalCursor);
+            for (auto* child : c->getChildren())
+                restore(child);
+        };
+        restore(this);
+        return;
+    }
+
+    std::function<void(juce::Component*)> setAll;
+    setAll = [&](juce::Component* c) {
+        if (dynamic_cast<juce::TextEditor*>(c) == nullptr)
+            c->setMouseCursor(juce::MouseCursor::NoCursor);
+        for (auto* child : c->getChildren())
+            setAll(child);
+    };
+    setAll(this);
+
+    // don't draw over text editor
+    if (textEditor && textEditor->isVisible() && textEditor->getScreenBounds().contains(
+        juce::Desktop::getInstance().getMousePosition()))
+        return;
+
+    // reload drawables if color changed
+    if (SettingsManager::cursorColor != cssCursorColor || SettingsManager::cursorShape != cssCursorShape)
+    {
+        cssCursorColor = SettingsManager::cursorColor;
+        cssCursorShape = SettingsManager::cursorShape;
+        auto triXml = juce::XmlDocument::parse(juce::String(Icons::cursorTriangle)
+            .replace("#000", "#" + cssCursorColor));
+        auto sqXml  = juce::XmlDocument::parse(juce::String(Icons::cursorSquare)
+            .replace("#000", "#" + cssCursorColor));
+        if (triXml) cursorTri = juce::Drawable::createFromSVG(*triXml);
+        if (sqXml)  cursorSq  = juce::Drawable::createFromSVG(*sqXml);
+    }
+
+    auto* drawable = (SettingsManager::cursorShape == 0) ? cursorTri.get() : cursorSq.get();
+    if (!drawable) return;
+    if (!getLocalBounds().contains(mousePos)) return;
+
+    float sz = (float)SettingsManager::cursorSize;
+    float scale = sz / 100.0f;
+
+    float angle = SettingsManager::cursorRotation ? cursorAngle : 0.0f;
+    if (SettingsManager::cursorRotDir == 1)
+        angle = -angle;
+
+    g.saveState();
+    g.addTransform(juce::AffineTransform::translation((float)mousePos.x, (float)mousePos.y));
+    g.addTransform(juce::AffineTransform::rotation(angle));
+    g.addTransform(juce::AffineTransform::scale(scale));
+    g.addTransform(juce::AffineTransform::translation(-50.0f, -50.0f));
+    g.setOpacity(0.7f);
+    drawable->draw(g, 1.0f);
+    g.restoreState();
 }

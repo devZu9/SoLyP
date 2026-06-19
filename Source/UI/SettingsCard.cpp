@@ -71,9 +71,17 @@ void SettingsCard::resized()
         auto rowArea = b.removeFromTop(rowH);
         if (row.label) row.label->setBounds(rowArea.removeFromLeft(rowArea.getWidth() / 2));
 
-        // toggle buttons: fit to content, don't stretch
-        if (dynamic_cast<juce::ToggleButton*>(row.control) != nullptr)
+        if (row.isPair)
+        {
+            auto half = rowArea.withWidth(rowArea.getWidth() / 2);
+            row.control->setBounds(half.reduced(4, 2));
+            if (row.control2)
+                row.control2->setBounds(half.translated((float)rowArea.getWidth() / 2, 0).reduced(4, 2));
+        }
+        else if (dynamic_cast<juce::ToggleButton*>(row.control) != nullptr)
             row.control->setBounds(rowArea.removeFromLeft(30));
+        else if (dynamic_cast<juce::TextButton*>(row.control) != nullptr)
+            row.control->setBounds(rowArea.removeFromLeft(30).withHeight(28));
         else
             row.control->setBounds(rowArea);
 
@@ -145,6 +153,75 @@ void SettingsCard::addSeparator()
 {
     auto& row = rows.emplace_back();
     row.isSeparator = true;
+}
+
+juce::TextButton* SettingsCard::addButton(const juce::String& labelText)
+{
+    auto& row = rows.emplace_back();
+    row.label = std::make_unique<juce::Label>(juce::String(), labelText);
+    row.label->setColour(juce::Label::textColourId, Theme::textPrimary);
+    row.label->setFont(juce::FontOptions(12.0f));
+    addAndMakeVisible(row.label.get());
+
+    auto* btn = new juce::TextButton();
+    btn->setColour(juce::TextButton::buttonColourId, Theme::bgButton);
+    btn->setColour(juce::TextButton::textColourOffId, Theme::textPrimary);
+    row.control = btn;
+    addAndMakeVisible(btn);
+    return btn;
+}
+
+void SettingsCard::addRadioPair(const juce::String& labelText, const juce::String& opt1, const juce::String& opt2,
+                                juce::ToggleButton*& out1, juce::ToggleButton*& out2)
+{
+    auto& row = rows.emplace_back();
+    row.isPair = true;
+    row.label = std::make_unique<juce::Label>(juce::String(), labelText);
+    row.label->setColour(juce::Label::textColourId, Theme::textPrimary);
+    row.label->setFont(juce::FontOptions(12.0f));
+    addAndMakeVisible(row.label.get());
+
+    static int nextRadioGroup = 1;
+
+    auto* b1 = new juce::ToggleButton(opt1);
+    auto* b2 = new juce::ToggleButton(opt2);
+    b1->setColour(juce::ToggleButton::tickColourId, Theme::textPrimary);
+    b1->setRadioGroupId(nextRadioGroup);
+    b2->setColour(juce::ToggleButton::tickColourId, Theme::textPrimary);
+    b2->setRadioGroupId(nextRadioGroup);
+    ++nextRadioGroup;
+    row.control = b1;
+    row.control2 = b2;
+    addAndMakeVisible(b1);
+    addAndMakeVisible(b2);
+    out1 = b1;
+    out2 = b2;
+}
+
+void SettingsCard::addImagePair(const juce::String& labelText, const juce::Drawable* img1, const juce::Drawable* img2,
+                                juce::DrawableButton*& out1, juce::DrawableButton*& out2)
+{
+    auto& row = rows.emplace_back();
+    row.isPair = true;
+    row.label = std::make_unique<juce::Label>(juce::String(), labelText);
+    row.label->setColour(juce::Label::textColourId, Theme::textPrimary);
+    row.label->setFont(juce::FontOptions(12.0f));
+    addAndMakeVisible(row.label.get());
+
+    auto* b1 = new juce::DrawableButton("", juce::DrawableButton::ImageFitted);
+    auto* b2 = new juce::DrawableButton("", juce::DrawableButton::ImageFitted);
+    b1->setImages(img1, nullptr, nullptr, img1, nullptr, nullptr, img1, nullptr);
+    b2->setImages(img2, nullptr, nullptr, img2, nullptr, nullptr, img2, nullptr);
+    b1->setColour(juce::DrawableButton::backgroundColourId, juce::Colours::transparentBlack);
+    b1->setColour(juce::DrawableButton::backgroundOnColourId, Theme::bgButtonHover);
+    b2->setColour(juce::DrawableButton::backgroundColourId, juce::Colours::transparentBlack);
+    b2->setColour(juce::DrawableButton::backgroundOnColourId, Theme::bgButtonHover);
+    row.control = b1;
+    row.control2 = b2;
+    addAndMakeVisible(b1);
+    addAndMakeVisible(b2);
+    out1 = b1;
+    out2 = b2;
 }
 
 juce::Label* SettingsCard::getLastLabel()

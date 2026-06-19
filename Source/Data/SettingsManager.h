@@ -34,7 +34,17 @@ namespace SettingsManager
     // startup guard
     inline bool noStartSave = true;
 
+    // cursor
+    inline bool cursorEnabled = false;
+    inline int cursorShape = 0;       // 0=triangle, 1=square
+    inline int cursorSize = 32;       // 8–64 px
+    inline bool cursorRotation = false;
+    inline int cursorRotDir = 0;      // 0=CCW, 1=CW
+    inline int cursorRotSpeed = 4;    // 1–20
+    inline juce::String cursorColor = "7861FE";
+
     // window
+    inline bool alwaysOnTop = true;
     inline int windowWidth = 0;
     inline int windowHeight = 0;
     inline int windowX = 0;

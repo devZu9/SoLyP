@@ -50,6 +50,14 @@ void SettingsManager::load()
     windowHeight       = g("windowHeight", 0);
     windowX            = g("windowX", 0);
     windowY            = g("windowY", 0);
+    alwaysOnTop        = g("alwaysOnTop", true);
+    cursorEnabled      = g("cursorEnabled", false);
+    cursorShape        = g("cursorShape", 0);
+    cursorSize         = g("cursorSize", 32);
+    cursorRotation     = g("cursorRotation", false);
+    cursorRotDir       = g("cursorRotDir", 0);
+    cursorRotSpeed     = g("cursorRotSpeed", 4);
+    cursorColor        = obj->hasProperty("cursorColor") ? obj->getProperty("cursorColor").toString() : juce::String("7861FE");
 }
 
 void SettingsManager::save()
@@ -79,6 +87,14 @@ void SettingsManager::save()
     obj->setProperty("windowHeight",       windowHeight);
     obj->setProperty("windowX",            windowX);
     obj->setProperty("windowY",            windowY);
+    obj->setProperty("alwaysOnTop",        alwaysOnTop);
+    obj->setProperty("cursorEnabled",      cursorEnabled);
+    obj->setProperty("cursorShape",        cursorShape);
+    obj->setProperty("cursorSize",         cursorSize);
+    obj->setProperty("cursorRotation",     cursorRotation);
+    obj->setProperty("cursorRotDir",       cursorRotDir);
+    obj->setProperty("cursorRotSpeed",     cursorRotSpeed);
+    obj->setProperty("cursorColor",        cursorColor);
 
     auto json = juce::JSON::toString(juce::var(obj.release()), false);
     auto file = getFile();

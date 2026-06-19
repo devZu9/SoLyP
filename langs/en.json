@@ -50,6 +50,8 @@
     "settings.triggerCount5": "Trigger Countdown 5",
     "settings.manualBpm": "Manual BPM",
     "settings.manualBpmValue": "BPM value",
+    "settings.alwaysOnTop": "Always on top",
+    "settings.alwaysOnTopTip": "Works only in Standalone mode",
     "settings.noteC": "C",
     "settings.noteCs": "C#",
     "settings.noteD": "D",
@@ -63,5 +65,17 @@
     "settings.noteAs": "A#",
     "settings.noteB": "B",
     "settings.channel": "Channel",
-    "settings.languageChanged": "Interface language will fully update\nwhen you re-open Settings"
+    "settings.languageChanged": "Interface language will fully update\nwhen you re-open Settings",
+    "cursor.title": "Cursor",
+    "cursor.enable": "Custom cursor",
+    "cursor.shape": "Cursor shape",
+    "cursor.size": "Cursor size",
+    "cursor.rotation": "Rotation",
+    "cursor.direction": "Direction",
+    "cursor.dirCCW": "Counter-clockwise",
+    "cursor.dirCW": "Clockwise",
+    "cursor.speed": "Rotation speed",
+    "cursor.triangle": "Triangle",
+    "cursor.square": "Square",
+    "cursor.color": "Cursor color"
 }

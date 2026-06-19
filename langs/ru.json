@@ -50,6 +50,8 @@
     "settings.triggerCount5": "Триггер Отсчёт 5",
     "settings.manualBpm": "Ручной BPM",
     "settings.manualBpmValue": "BPM значение",
+    "settings.alwaysOnTop": "Поверх всех окон",
+    "settings.alwaysOnTopTip": "Работает только в Standalone режиме",
     "settings.noteC": "C",
     "settings.noteCs": "C#",
     "settings.noteD": "D",
@@ -63,5 +65,17 @@
     "settings.noteAs": "A#",
     "settings.noteB": "B",
     "settings.channel": "Канал",
-    "settings.languageChanged": "Язык интерфейса обновится полностью\nпри повторном открытии настроек"
+    "settings.languageChanged": "Язык интерфейса обновится полностью\nпри повторном открытии настроек",
+    "cursor.title": "Курсор",
+    "cursor.enable": "Свой курсор",
+    "cursor.shape": "Форма курсора",
+    "cursor.size": "Размер курсора",
+    "cursor.rotation": "Вращение",
+    "cursor.direction": "Направление",
+    "cursor.dirCCW": "Против часовой",
+    "cursor.dirCW": "По часовой",
+    "cursor.speed": "Скорость вращения",
+    "cursor.triangle": "Треугольник",
+    "cursor.square": "Квадрат",
+    "cursor.color": "Цвет курсора"
 }

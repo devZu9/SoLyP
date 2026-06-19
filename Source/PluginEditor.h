@@ -8,6 +8,7 @@
 class SettingsComponent;
 
 class SoLyPAudioProcessorEditor : public juce::AudioProcessorEditor,
+                                  private juce::Timer,
                                   private juce::Button::Listener,
                                   private juce::Slider::Listener,
                                   private juce::ComponentListener
@@ -26,12 +27,14 @@ public:
     void mouseExit(const juce::MouseEvent&) override;
 
 private:
+    void timerCallback() override;
     void buttonClicked(juce::Button*) override;
     void sliderValueChanged(juce::Slider*) override;
 
     void paintLyrics(juce::Graphics& g);
     void paintPauseOverlay(juce::Graphics& g);
     void paintError(juce::Graphics& g);
+    void paintCursor(juce::Graphics& g);
 
     void showSaveDialog();
     void doSave(const juce::String& filename, const juce::String& songTitle);
@@ -71,6 +74,13 @@ private:
     std::unique_ptr<ControlsPanel> controlsPanel;
 
     bool languageChangeGuard = false;
+
+    // cursor
+    std::unique_ptr<juce::Drawable> cursorTri, cursorSq;
+    float cursorAngle = 0.0f;
+    juce::Point<int> mousePos;
+    juce::String cssCursorColor;
+    int cssCursorShape = -1;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SoLyPAudioProcessorEditor)
 };
