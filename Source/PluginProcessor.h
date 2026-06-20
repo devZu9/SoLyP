@@ -44,41 +44,33 @@ public:
     void loadSong(const Song& song);
 
     int getCurrentSectionIndex() const { return currentSectionIndex; }
-    int getCurrentLineIndex() const { return currentLineIndex; }
-    int getCurrentBar() const { return lastBar; }
-    int getCountdownValue() const { return countdownValue; }
+    int getCurrentBar() const { return scrollHead >= 0.0 ? (int)scrollHead : 0; }
     int getLastMidiNote() const { return lastMidiNote; }
     double getLastMidiNoteTime() const { return lastMidiNoteTime; }
-
+    double getScrollHead() const { return scrollHead; }
     int getPreLinesOnPause() const { return preLinesOnPause; }
     void setPreLinesOnPause(int count) { preLinesOnPause = count; }
+
+    void timerTick();
 
     std::function<void()> onStateChanged;
 
 private:
     void parameterChanged(const juce::String& parameterID, float newValue) override;
 
-    void advanceLine();
     void switchToSection(int index);
     void switchToNextSection();
-    void startCountdown(int fromValue);
     void processMidiMessage(const juce::MidiMessage& msg);
-    void updateBarPosition(juce::AudioPlayHead* playHead);
 
     juce::AudioProcessorValueTreeState apvts;
 
     TransportState transportState = TransportState::Stopped;
     Song currentSong;
     int currentSectionIndex = 0;
-    int currentLineIndex = 0;
 
-    int lastBar = 0;
-    bool barAdvanced = false;
     double currentBpm = 120.0;
-
-    int countdownValue = 0;
-    int countdownFrom = 0;
-    double countdownFraction = 0.0;
+    double scrollHead = -1.0;
+    double lastTimerUpdate = 0.0;
 
     int preLinesOnPause = 1;
 

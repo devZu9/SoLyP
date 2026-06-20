@@ -168,11 +168,9 @@ juce::String Song::toJson() const
     return juce::JSON::toString(juce::var(root), false);
 }
 
-void Song::rebuildDisplayLines(float maxWidth, float fontSize) const
+void Song::rebuildDisplayLines(float maxWidth, float fontSize, int longLineBehavior) const
 {
     displayLines.clear();
-    lineToSection.clear();
-    lineToLine.clear();
     lastBuildWidth = maxWidth;
     lastBuildFontSize = fontSize;
 
@@ -188,72 +186,76 @@ void Song::rebuildDisplayLines(float maxWidth, float fontSize) const
         {
             const auto& line = section.lines[li];
 
-            juce::GlyphArrangement ga;
-            ga.addLineOfText(f, line, 0.0f, 0.0f);
-            float textW = ga.getBoundingBox(0, ga.getNumGlyphs(), false).getWidth();
-
-            if (textW <= maxWidth)
+            if (longLineBehavior == 0) // wrap — split long lines
             {
-                displayLines.add(line);
-                lineToSection.add(si);
-                lineToLine.add(li);
-                continue;
-            }
+                juce::GlyphArrangement ga;
+                ga.addLineOfText(f, line, 0.0f, 0.0f);
+                float textW = ga.getBoundingBox(0, ga.getNumGlyphs(), false).getWidth();
 
-            // split by last space before maxWidth
-            juce::String remaining = line;
-            while (remaining.isNotEmpty())
-            {
-                juce::GlyphArrangement ga2;
-                ga2.addLineOfText(f, remaining, 0.0f, 0.0f);
-                float w = ga2.getBoundingBox(0, ga2.getNumGlyphs(), false).getWidth();
-
-                if (w <= maxWidth)
+                if (textW <= maxWidth)
                 {
-                    displayLines.add(remaining);
-                    lineToSection.add(si);
-                    lineToLine.add(li);
-                    break;
+                    displayLines.add({line, si, 1});
+                    continue;
                 }
 
-                // find the last space within maxWidth
-                int splitIdx = -1;
-                for (int ch = 0; ch < remaining.length(); ++ch)
+                // collect fragments first to know parts count
+                juce::StringArray fragments;
+                juce::String remaining = line;
+                while (remaining.isNotEmpty())
                 {
-                    if (remaining[ch] == ' ')
+                    juce::GlyphArrangement ga2;
+                    ga2.addLineOfText(f, remaining, 0.0f, 0.0f);
+                    float w = ga2.getBoundingBox(0, ga2.getNumGlyphs(), false).getWidth();
+
+                    if (w <= maxWidth)
                     {
-                        juce::String sub = remaining.substring(0, ch);
-                        juce::GlyphArrangement ga3;
-                        ga3.addLineOfText(f, sub, 0.0f, 0.0f);
-                        if (ga3.getBoundingBox(0, ga3.getNumGlyphs(), false).getWidth() <= maxWidth)
-                            splitIdx = ch;
-                        else
-                            break;
+                        fragments.add(remaining);
+                        break;
                     }
-                }
 
-                if (splitIdx <= 0)
-                {
-                    // no space found, forced break at character
-                    for (int ch = 1; ch < remaining.length(); ++ch)
+                    int splitIdx = -1;
+                    for (int ch = 0; ch < remaining.length(); ++ch)
                     {
-                        juce::String sub = remaining.substring(0, ch);
-                        juce::GlyphArrangement ga3;
-                        ga3.addLineOfText(f, sub, 0.0f, 0.0f);
-                        if (ga3.getBoundingBox(0, ga3.getNumGlyphs(), false).getWidth() > maxWidth)
+                        if (remaining[ch] == ' ')
                         {
-                            splitIdx = ch - 1;
-                            if (splitIdx <= 0) splitIdx = 1;
-                            break;
+                            juce::String sub = remaining.substring(0, ch);
+                            juce::GlyphArrangement ga3;
+                            ga3.addLineOfText(f, sub, 0.0f, 0.0f);
+                            if (ga3.getBoundingBox(0, ga3.getNumGlyphs(), false).getWidth() <= maxWidth)
+                                splitIdx = ch;
+                            else
+                                break;
                         }
                     }
-                    if (splitIdx <= 0) splitIdx = 1;
+
+                    if (splitIdx <= 0)
+                    {
+                        for (int ch = 1; ch < remaining.length(); ++ch)
+                        {
+                            juce::String sub = remaining.substring(0, ch);
+                            juce::GlyphArrangement ga3;
+                            ga3.addLineOfText(f, sub, 0.0f, 0.0f);
+                            if (ga3.getBoundingBox(0, ga3.getNumGlyphs(), false).getWidth() > maxWidth)
+                            {
+                                splitIdx = ch - 1;
+                                if (splitIdx <= 0) splitIdx = 1;
+                                break;
+                            }
+                        }
+                        if (splitIdx <= 0) splitIdx = 1;
+                    }
+
+                    fragments.add(remaining.substring(0, splitIdx));
+                    remaining = remaining.substring(splitIdx).trimStart();
                 }
 
-                displayLines.add(remaining.substring(0, splitIdx));
-                lineToSection.add(si);
-                lineToLine.add(li);
-                remaining = remaining.substring(splitIdx).trimStart();
+                int parts = fragments.size();
+                for (auto& frag : fragments)
+                    displayLines.add({frag, si, parts});
+            }
+            else // shrink — one entry per line, parts=1
+            {
+                displayLines.add({line, si, 1});
             }
         }
     }

@@ -1,5 +1,6 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
+#include "Data/SettingsManager.h"
 
 namespace
 {
@@ -58,7 +59,23 @@ void SoLyPAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::M
     juce::ScopedNoDenormals noDenormals;
     buffer.clear();
 
-    updateBarPosition(getPlayHead());
+    // read BPM and play state from DAW playhead
+    auto head = getPlayHead();
+    if (head)
+    {
+        auto opt = head->getPosition();
+        if (opt.hasValue())
+        {
+            auto& pos = *opt;
+            if (pos.getBpm().hasValue())
+                currentBpm = *pos.getBpm();
+            if (pos.getIsPlaying())
+            {
+                if (transportState == TransportState::Stopped || transportState == TransportState::Paused)
+                    setTransportState(TransportState::Playing);
+            }
+        }
+    }
 
     for (const auto& metadata : midiMessages)
     {
@@ -68,109 +85,101 @@ void SoLyPAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::M
     }
 }
 
-void SoLyPAudioProcessor::updateBarPosition(juce::AudioPlayHead* head)
+void SoLyPAudioProcessor::timerTick()
 {
-    if (!head)
-        return;
+    double now = juce::Time::getMillisecondCounterHiRes();
 
-    auto opt = head->getPosition();
-    if (!opt.hasValue())
-        return;
-
-    auto& pos = *opt;
-
-    if (pos.getBpm().hasValue())
-        currentBpm = *pos.getBpm();
-
-    if (!pos.getTimeInSeconds().hasValue())
-        return;
-
-    if (!pos.getIsPlaying())
+    if (scrollHead >= 0.0 && transportState == TransportState::Playing)
     {
-        if (transportState == TransportState::Playing)
-            setTransportState(TransportState::Paused);
-        return;
-    }
-
-    if (transportState == TransportState::Paused)
-        return;
-
-    double ppqPosition = pos.getPpqPosition().orFallback(0.0);
-    int currentBarInt = static_cast<int>(std::floor(ppqPosition));
-
-    if (transportState == TransportState::Countdown)
-    {
-        double ppq = pos.getPpqPosition().orFallback(0.0);
-
-        if (countdownFrom == 3)
+        if (currentSong.displayLines.isEmpty())
         {
-            double startBeat = std::floor(ppq) - 1.5;
-            double elapsed = ppq - startBeat;
-            int digit = 3 - static_cast<int>(elapsed / 0.5);
-            if (digit < 0) digit = 0;
-            if (digit != countdownValue)
+            lastTimerUpdate = now;
+            return;
+        }
+
+        double elapsed = now - lastTimerUpdate;
+        int idx = (int)scrollHead;
+
+        if (idx >= currentSong.displayLines.size())
+        {
+            transportState = TransportState::Stopped;
+            if (onStateChanged) onStateChanged();
+            lastTimerUpdate = now;
+            return;
+        }
+
+        double bpm = SettingsManager::manualBpmEnabled
+            ? (double)SettingsManager::manualBpmValue
+            : currentBpm;
+        if (bpm <= 0.0) bpm = 120.0;
+
+        int parts = currentSong.displayLines[idx].parts;
+        double barDuration = 60.0 / bpm * (double)SettingsManager::timeSignature;
+        double timePerLine = barDuration / ((double)SettingsManager::linesPerBar * (double)parts);
+
+        if (timePerLine > 0.0)
+        {
+            double advance = elapsed / (timePerLine * 1000.0);
+            double newHead = scrollHead + advance;
+
+            int newIdx = (int)newHead;
+            if (newIdx >= currentSong.displayLines.size())
             {
-                countdownValue = digit;
-                if (countdownValue == 0)
-                {
-                    transportState = TransportState::Playing;
-                    countdownValue = 0;
-                    currentLineIndex = 0;
-                    lastBar = currentBarInt;
-                    if (onStateChanged) onStateChanged();
-                    return;
-                }
+                transportState = TransportState::Stopped;
+                scrollHead = (double)(currentSong.displayLines.size() - 1);
+                if (onStateChanged) onStateChanged();
+                lastTimerUpdate = now;
+                return;
             }
-        }
-        else if (countdownFrom == 5)
-        {
-            double startBeat = std::floor(ppq) - 2.5;
-            double elapsed = ppq - startBeat;
-            int digit = 5 - static_cast<int>(elapsed / 0.5);
-            if (digit < 0) digit = 0;
-            if (digit != countdownValue)
-            {
-                countdownValue = digit;
-                if (countdownValue == 0)
-                {
-                    transportState = TransportState::Playing;
-                    countdownValue = 0;
-                    currentLineIndex = 0;
-                    lastBar = currentBarInt;
-                    if (onStateChanged) onStateChanged();
-                    return;
-                }
-            }
-        }
 
-        if (onStateChanged) onStateChanged();
-        return;
+            int oldSection = currentSong.displayLines[idx].sectionIndex;
+            int newSection = currentSong.displayLines[newIdx].sectionIndex;
+            if (newSection != oldSection)
+                currentSectionIndex = newSection;
+
+            scrollHead = newHead;
+            if (onStateChanged) onStateChanged();
+        }
     }
 
-    if (currentBarInt != lastBar)
-    {
-        if (transportState == TransportState::Playing)
-        {
-            advanceLine();
-        }
-        lastBar = currentBarInt;
-    }
+    lastTimerUpdate = now;
 }
 
-void SoLyPAudioProcessor::advanceLine()
+void SoLyPAudioProcessor::setTransportState(TransportState state)
 {
-    if (currentSong.sections.isEmpty())
-        return;
+    transportState = state;
 
-    const auto& section = currentSong.sections[currentSectionIndex];
-    currentLineIndex++;
-
-    if (currentLineIndex >= static_cast<int>(section.lines.size()))
+    if (state == TransportState::Playing)
     {
-        currentLineIndex = 0;
-        switchToNextSection();
+        lastTimerUpdate = juce::Time::getMillisecondCounterHiRes();
+        if (scrollHead < 0.0 && !currentSong.displayLines.isEmpty())
+        {
+            // start from current section's first display line
+            bool found = false;
+            for (int i = 0; i < currentSong.displayLines.size(); ++i)
+            {
+                if (currentSong.displayLines[i].sectionIndex == currentSectionIndex)
+                {
+                    scrollHead = (double)i;
+                    found = true;
+                    break;
+                }
+            }
+            if (!found)
+                scrollHead = 0.0;
+        }
     }
 
+    if (onStateChanged) onStateChanged();
+}
+
+void SoLyPAudioProcessor::loadSong(const Song& song)
+{
+    currentSong = song;
+    currentSectionIndex = 0;
+    scrollHead = -1.0;
+    lastTimerUpdate = 0.0;
+    transportState = TransportState::Stopped;
     if (onStateChanged) onStateChanged();
 }
 
@@ -180,7 +189,26 @@ void SoLyPAudioProcessor::switchToSection(int index)
         return;
 
     currentSectionIndex = index;
-    currentLineIndex = 0;
+
+    if (currentSong.displayLines.isEmpty())
+    {
+        scrollHead = -1.0;
+    }
+    else
+    {
+        bool found = false;
+        for (int i = 0; i < currentSong.displayLines.size(); ++i)
+        {
+            if (currentSong.displayLines[i].sectionIndex == index)
+            {
+                scrollHead = (double)i;
+                found = true;
+                break;
+            }
+        }
+        if (!found)
+            scrollHead = 0.0;
+    }
 
     if (onStateChanged) onStateChanged();
 }
@@ -189,16 +217,12 @@ void SoLyPAudioProcessor::switchToNextSection()
 {
     int next = currentSectionIndex + 1;
     if (next >= static_cast<int>(currentSong.sections.size()))
-        next = 0;
+    {
+        transportState = TransportState::Stopped;
+        if (onStateChanged) onStateChanged();
+        return;
+    }
     switchToSection(next);
-}
-
-void SoLyPAudioProcessor::startCountdown(int fromValue)
-{
-    transportState = TransportState::Countdown;
-    countdownFrom = fromValue;
-    countdownValue = fromValue;
-    if (onStateChanged) onStateChanged();
 }
 
 void SoLyPAudioProcessor::processMidiMessage(const juce::MidiMessage& msg)
@@ -218,6 +242,8 @@ void SoLyPAudioProcessor::processMidiMessage(const juce::MidiMessage& msg)
         switch (cmd)
         {
         case MidiManager::Command::Play:
+        case MidiManager::Command::Countdown3:
+        case MidiManager::Command::Countdown5:
             if (transportState == TransportState::Paused || transportState == TransportState::Stopped)
                 setTransportState(TransportState::Playing);
             break;
@@ -232,12 +258,6 @@ void SoLyPAudioProcessor::processMidiMessage(const juce::MidiMessage& msg)
             switchToNextSection();
             setTransportState(TransportState::Playing);
             break;
-        case MidiManager::Command::Countdown3:
-            startCountdown(3);
-            break;
-        case MidiManager::Command::Countdown5:
-            startCountdown(5);
-            break;
         case MidiManager::Command::Landmark:
         {
             int sectionIndex = midiManager.getLastLandmarkSection();
@@ -247,27 +267,6 @@ void SoLyPAudioProcessor::processMidiMessage(const juce::MidiMessage& msg)
         }
         }
     });
-}
-
-void SoLyPAudioProcessor::setTransportState(TransportState state)
-{
-    transportState = state;
-    if (state == TransportState::Playing)
-    {
-        auto opt = getPlayHead()->getPosition();
-        if (opt.hasValue())
-            lastBar = static_cast<int>(std::floor(opt->getPpqPosition().orFallback(0.0)));
-    }
-    if (onStateChanged) onStateChanged();
-}
-
-void SoLyPAudioProcessor::loadSong(const Song& song)
-{
-    currentSong = song;
-    currentSectionIndex = 0;
-    currentLineIndex = 0;
-    transportState = TransportState::Stopped;
-    if (onStateChanged) onStateChanged();
 }
 
 void SoLyPAudioProcessor::getStateInformation(juce::MemoryBlock& destData)

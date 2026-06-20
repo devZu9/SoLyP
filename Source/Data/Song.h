@@ -14,6 +14,13 @@ struct LegendEntry
     juce::String note;
 };
 
+struct DisplayLine
+{
+    juce::String text;
+    int sectionIndex;
+    int parts; // how many visual lines this original line was split into
+};
+
 struct Song
 {
     juce::Array<Section> sections;
@@ -21,14 +28,12 @@ struct Song
     juce::String fileTitle;
     int preLinesOnPause = -1;
 
-    // pre-processed display lines (split long lines by words, mutable for lazy build)
-    mutable juce::StringArray displayLines;
-    mutable juce::Array<int> lineToSection;
-    mutable juce::Array<int> lineToLine;
+    // pre-processed display lines (split long lines by words)
+    mutable juce::Array<DisplayLine> displayLines;
     mutable float lastBuildWidth = 0;
     mutable float lastBuildFontSize = 0;
 
-    void rebuildDisplayLines(float maxWidth, float fontSize) const;
+    void rebuildDisplayLines(float maxWidth, float fontSize, int longLineBehavior) const;
 
     static Song fromJson(const juce::String& jsonText);
     static Song fromText(const juce::String& text);

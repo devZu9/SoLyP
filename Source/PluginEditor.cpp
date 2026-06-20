@@ -198,6 +198,12 @@ bool SoLyPAudioProcessorEditor::keyPressed(const juce::KeyPress&)
 
 void SoLyPAudioProcessorEditor::timerCallback()
 {
+    if (processor.getTransportState() == SoLyPAudioProcessor::TransportState::Playing)
+    {
+        processor.timerTick();
+        repaint();
+    }
+
     if (!SettingsManager::cursorEnabled) return;
 
     auto screenPos = juce::Desktop::getInstance().getMousePosition();

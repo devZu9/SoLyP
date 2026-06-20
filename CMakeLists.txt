@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.24)
-project(SoLyP VERSION 1.0.8 LANGUAGES CXX)
+project(SoLyP VERSION 1.0.9 LANGUAGES CXX)
 
 cmake_policy(SET CMP0169 OLD)
 

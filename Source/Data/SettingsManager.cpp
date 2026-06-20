@@ -46,6 +46,8 @@ void SettingsManager::load()
     triggerCountdown5  = g("triggerCountdown5", 9);
     manualBpmEnabled   = g("manualBpmEnabled", false);
     manualBpmValue     = g("manualBpmValue", 120.0f);
+    timeSignature      = g("timeSignature", 4);
+    linesPerBar        = g("linesPerBar", 1.0f);
     windowWidth        = g("windowWidth", 0);
     windowHeight       = g("windowHeight", 0);
     windowX            = g("windowX", 0);
@@ -83,6 +85,8 @@ void SettingsManager::save()
     obj->setProperty("triggerCountdown5",  triggerCountdown5);
     obj->setProperty("manualBpmEnabled",   manualBpmEnabled);
     obj->setProperty("manualBpmValue",     manualBpmValue);
+    obj->setProperty("timeSignature",      timeSignature);
+    obj->setProperty("linesPerBar",        linesPerBar);
     obj->setProperty("windowWidth",        windowWidth);
     obj->setProperty("windowHeight",       windowHeight);
     obj->setProperty("windowX",            windowX);

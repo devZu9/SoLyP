@@ -1,11 +1,12 @@
 #include "MidiManager.h"
+#include "../Data/SettingsManager.h"
 
 MidiManager::MidiManager() {}
 
-bool MidiManager::isInOctave(int midiNote, int octave) const
+bool MidiManager::isInOctave(int midiNote, int octaveParam) const
 {
-    int noteOctave = midiNote / 12;
-    return noteOctave == octave;
+    int noteOctave = midiNote / 12 - 1 - SettingsManager::octaveSystem;
+    return noteOctave == octaveParam;
 }
 
 int MidiManager::getNoteInOctave(int midiNote, int octave) const
@@ -17,7 +18,7 @@ int MidiManager::getNoteInOctave(int midiNote, int octave) const
 
 void MidiManager::processNote(int midiNote, std::function<void(Command)> callback)
 {
-    if (isInOctave(midiNote, config.landmarkOctave))
+    if (isInOctave(midiNote, SettingsManager::landmarkOctave))
     {
         auto noteInOctave = midiNote % 12;
         lastLandmarkSection = noteInOctave;
@@ -25,21 +26,21 @@ void MidiManager::processNote(int midiNote, std::function<void(Command)> callbac
         return;
     }
 
-    if (isInOctave(midiNote, config.triggerOctave))
+    if (isInOctave(midiNote, SettingsManager::triggerOctave))
     {
         auto noteInOctave = midiNote % 12;
 
-        if (noteInOctave == config.playNote)
+        if (noteInOctave == SettingsManager::triggerPlay)
             callback(Command::Play);
-        else if (noteInOctave == config.pauseNote)
+        else if (noteInOctave == SettingsManager::triggerPause)
             callback(Command::Pause);
-        else if (noteInOctave == config.nextSectionNote)
+        else if (noteInOctave == SettingsManager::triggerNextSection)
             callback(Command::NextSection);
-        else if (noteInOctave == config.hybridNote)
+        else if (noteInOctave == SettingsManager::triggerHybrid)
             callback(Command::Hybrid);
-        else if (noteInOctave == config.countdown3Note)
+        else if (noteInOctave == SettingsManager::triggerCountdown3)
             callback(Command::Countdown3);
-        else if (noteInOctave == config.countdown5Note)
+        else if (noteInOctave == SettingsManager::triggerCountdown5)
             callback(Command::Countdown5);
     }
 }

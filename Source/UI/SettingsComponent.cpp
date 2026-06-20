@@ -123,6 +123,22 @@ SettingsComponent::SettingsComponent(std::function<void()> onLangChanged)
 
         card->addSeparator();
 
+        // time signature
+        auto* tsCb = card->addCombo(I18n::get("settings.timeSignature"));
+        tsCb->addItem("4/4", 1);
+        tsCb->addItem("3/4", 2);
+        tsCb->addItem("2/4", 3);
+        int tsId = (SettingsManager::timeSignature == 3) ? 2
+                 : (SettingsManager::timeSignature == 2) ? 3 : 1;
+        tsCb->setSelectedId(tsId, juce::dontSendNotification);
+        tsCb->onChange = [tsCb] {
+            int vals[] = { 4, 3, 2 };
+            SettingsManager::timeSignature = vals[tsCb->getSelectedId() - 1];
+            SettingsManager::save();
+        };
+
+        card->addSeparator();
+
         juce::ToggleButton* aotTg = nullptr;
         juce::DrawableButton* aotInfo = nullptr;
         card->addToggleWithInfo(I18n::get("settings.alwaysOnTop"), aotTg, aotInfo);
@@ -156,13 +172,22 @@ SettingsComponent::SettingsComponent(std::function<void()> onLangChanged)
 
     // ── card 2: Display ──
     {
-        auto* card = new SettingsCard(I18n::get("settings.longLines"));
+        auto* card = new SettingsCard(I18n::get("settings.textLines"));
         auto* preSl = card->addSlider(I18n::get("settings.preLines"), 1.0, 5.0, 1.0);
         preSl->setValue((double)SettingsManager::preLinesOnPause);
         preSl->onValueChange = [preSl] {
             SettingsManager::preLinesOnPause = (int)preSl->getValue();
             SettingsManager::save();
         };
+
+        auto* linesPerBarSl = card->addSlider(I18n::get("settings.linesPerBar"), 0.5, 4.0, 0.5);
+        linesPerBarSl->setValue((double)SettingsManager::linesPerBar);
+        linesPerBarSl->setDoubleClickReturnValue(true, 1.0);
+        linesPerBarSl->onValueChange = [linesPerBarSl] {
+            SettingsManager::linesPerBar = (float)linesPerBarSl->getValue();
+            SettingsManager::save();
+        };
+
         auto* longCb = card->addCombo(I18n::get("settings.longLines"));
         longCb->addItem(I18n::get("settings.longLinesWrap"), 1);
         longCb->addItem(I18n::get("settings.longLinesShrink"), 2);
@@ -178,10 +203,8 @@ SettingsComponent::SettingsComponent(std::function<void()> onLangChanged)
     {
         auto* card = new SettingsCard("MIDI");
         auto* octCb = card->addCombo(I18n::get("settings.octaveSystem"));
-        octCb->addItem(I18n::get("settings.octaveYamaha"), 1);
-        octCb->addItem(I18n::get("settings.octaveRoland"), 2);
-        octCb->addItem(I18n::get("settings.octaveC3"), 3);
-        octCb->addItem(I18n::get("settings.octaveC4"), 4);
+        octCb->addItem(I18n::get("settings.octaveStd"), 1);
+        octCb->addItem(I18n::get("settings.octaveAbleton"), 2);
         octCb->setSelectedId(SettingsManager::octaveSystem + 1);
         octCb->onChange = [octCb] {
             SettingsManager::octaveSystem = octCb->getSelectedId() - 1;
