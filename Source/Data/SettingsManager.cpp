@@ -43,7 +43,7 @@ void SettingsManager::load()
     triggerNextSection = g("triggerNextSection", 4);
     triggerHybrid      = g("triggerHybrid", 5);
     triggerCountdown3  = g("triggerCountdown3", 7);
-    triggerCountdown5  = g("triggerCountdown5", 9);
+    triggerStop  = g("triggerStop", 9);
     manualBpmEnabled   = g("manualBpmEnabled", false);
     manualBpmValue     = g("manualBpmValue", 120.0f);
     timeSignature      = g("timeSignature", 4);
@@ -82,7 +82,7 @@ void SettingsManager::save()
     obj->setProperty("triggerNextSection", triggerNextSection);
     obj->setProperty("triggerHybrid",      triggerHybrid);
     obj->setProperty("triggerCountdown3",  triggerCountdown3);
-    obj->setProperty("triggerCountdown5",  triggerCountdown5);
+    obj->setProperty("triggerStop",  triggerStop);
     obj->setProperty("manualBpmEnabled",   manualBpmEnabled);
     obj->setProperty("manualBpmValue",     manualBpmValue);
     obj->setProperty("timeSignature",      timeSignature);

@@ -198,7 +198,9 @@ bool SoLyPAudioProcessorEditor::keyPressed(const juce::KeyPress&)
 
 void SoLyPAudioProcessorEditor::timerCallback()
 {
-    if (processor.getTransportState() == SoLyPAudioProcessor::TransportState::Playing)
+    auto state = processor.getTransportState();
+    if (state == SoLyPAudioProcessor::TransportState::Playing
+        || state == SoLyPAudioProcessor::TransportState::Paused)
     {
         processor.timerTick();
         repaint();
@@ -327,10 +329,15 @@ void SoLyPAudioProcessorEditor::paint(juce::Graphics& g)
         return;
 
     auto state = processor.getTransportState();
-    paintLyrics(g);
 
     if (state == SoLyPAudioProcessor::TransportState::Paused)
-        paintPauseOverlay(g);
+    {
+        paintPausedLyrics(g);
+    }
+    else
+    {
+        paintLyrics(g);
+    }
 
     if (!lastError.isEmpty())
         paintError(g);

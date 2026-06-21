@@ -88,8 +88,10 @@ void SoLyPAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::M
 void SoLyPAudioProcessor::timerTick()
 {
     double now = juce::Time::getMillisecondCounterHiRes();
+    bool isPlaying = (transportState == TransportState::Playing);
+    bool isPaused = (transportState == TransportState::Paused);
 
-    if (scrollHead >= 0.0 && transportState == TransportState::Playing)
+    if (scrollHead >= 0.0 && (isPlaying || isPaused))
     {
         if (currentSong.displayLines.isEmpty())
         {
@@ -102,8 +104,11 @@ void SoLyPAudioProcessor::timerTick()
 
         if (idx >= currentSong.displayLines.size())
         {
-            transportState = TransportState::Stopped;
-            if (onStateChanged) onStateChanged();
+            if (isPlaying)
+            {
+                transportState = TransportState::Stopped;
+                if (onStateChanged) onStateChanged();
+            }
             lastTimerUpdate = now;
             return;
         }
@@ -125,9 +130,16 @@ void SoLyPAudioProcessor::timerTick()
             int newIdx = (int)newHead;
             if (newIdx >= currentSong.displayLines.size())
             {
-                transportState = TransportState::Stopped;
-                scrollHead = (double)(currentSong.displayLines.size() - 1);
-                if (onStateChanged) onStateChanged();
+                if (isPlaying)
+                {
+                    transportState = TransportState::Stopped;
+                    scrollHead = (double)(currentSong.displayLines.size() - 1);
+                    if (onStateChanged) onStateChanged();
+                }
+                else
+                {
+                    scrollHead = (double)(currentSong.displayLines.size() - 1);
+                }
                 lastTimerUpdate = now;
                 return;
             }
@@ -147,27 +159,53 @@ void SoLyPAudioProcessor::timerTick()
 
 void SoLyPAudioProcessor::setTransportState(TransportState state)
 {
+    auto oldState = transportState;
     transportState = state;
 
     if (state == TransportState::Playing)
     {
-        lastTimerUpdate = juce::Time::getMillisecondCounterHiRes();
-        if (scrollHead < 0.0 && !currentSong.displayLines.isEmpty())
+        pauseLineActive = false;
+
+        if (oldState == TransportState::Paused && pauseLineDisplayIdx >= 0)
         {
-            // start from current section's first display line
-            bool found = false;
-            for (int i = 0; i < currentSong.displayLines.size(); ++i)
-            {
-                if (currentSong.displayLines[i].sectionIndex == currentSectionIndex)
-                {
-                    scrollHead = (double)i;
-                    found = true;
-                    break;
-                }
-            }
-            if (!found)
-                scrollHead = 0.0;
+            resumeSkipIdx = pauseLineDisplayIdx;
+            scrollHead = (double)pauseLineDisplayIdx;
+            lastTimerUpdate = juce::Time::getMillisecondCounterHiRes();
         }
+        else
+        {
+            resumeSkipIdx = 0;
+            lastTimerUpdate = juce::Time::getMillisecondCounterHiRes();
+            if (scrollHead < 0.0 && !currentSong.displayLines.isEmpty())
+            {
+                bool found = false;
+                for (int i = 0; i < currentSong.displayLines.size(); ++i)
+                {
+                    if (currentSong.displayLines[i].sectionIndex == currentSectionIndex)
+                    {
+                        scrollHead = (double)i;
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found)
+                    scrollHead = 0.0;
+            }
+        }
+    }
+    else if (state == TransportState::Paused)
+    {
+        pauseLineActive = true;
+        int offset = preLinesOnPause;
+        if (scrollHead >= 0.0 && (int)(scrollHead + offset) < currentSong.displayLines.size())
+            pauseLineDisplayIdx = (int)(scrollHead + offset) + 1;
+        else
+            pauseLineDisplayIdx = -1;
+    }
+    else if (state == TransportState::Stopped)
+    {
+        pauseLineActive = false;
+        scrollHead = -1.0;
     }
 
     if (onStateChanged) onStateChanged();
@@ -176,6 +214,7 @@ void SoLyPAudioProcessor::setTransportState(TransportState state)
 void SoLyPAudioProcessor::loadSong(const Song& song)
 {
     currentSong = song;
+    resumeSkipIdx = 0;
     currentSectionIndex = 0;
     scrollHead = -1.0;
     lastTimerUpdate = 0.0;
@@ -210,6 +249,9 @@ void SoLyPAudioProcessor::switchToSection(int index)
             scrollHead = 0.0;
     }
 
+    if (pauseLineActive && transportState == TransportState::Paused)
+        pauseLineDisplayIdx = (int)(scrollHead + preLinesOnPause) + 1;
+
     if (onStateChanged) onStateChanged();
 }
 
@@ -243,9 +285,11 @@ void SoLyPAudioProcessor::processMidiMessage(const juce::MidiMessage& msg)
         {
         case MidiManager::Command::Play:
         case MidiManager::Command::Countdown3:
-        case MidiManager::Command::Countdown5:
             if (transportState == TransportState::Paused || transportState == TransportState::Stopped)
                 setTransportState(TransportState::Playing);
+            break;
+        case MidiManager::Command::Stop:
+            setTransportState(TransportState::Stopped);
             break;
         case MidiManager::Command::Pause:
             if (transportState == TransportState::Playing || transportState == TransportState::Countdown)

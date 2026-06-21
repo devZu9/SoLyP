@@ -74,7 +74,7 @@ void SoLyPAudioProcessorEditor::paintLyrics(juce::Graphics& g)
         for (int i = 0; i < visLines; ++i)
         {
             int idx = dispIdx + preLines - visLines + i;
-            if (idx < 0 || idx >= song.displayLines.size()) continue;
+            if (idx < processor.getResumeSkipIdx() || idx >= song.displayLines.size()) continue;
 
             float y = bounds.getBottom() - (float)(visLines - i + frac) * lineHeight;
             if (y + lineHeight < (float)bounds.getY()) continue;
@@ -100,7 +100,7 @@ void SoLyPAudioProcessorEditor::paintLyrics(juce::Graphics& g)
             for (int i = 0; i < visLines; ++i)
             {
                 int idx = dispIdx + preLines - visLines + i;
-                if (idx < 0 || idx >= song.displayLines.size()) continue;
+            if (idx < processor.getResumeSkipIdx() || idx >= song.displayLines.size()) continue;
 
                 float y = bounds.getBottom() - (float)(visLines - i) * lineHeight;
                 if (y + lineHeight < (float)bounds.getY()) continue;
@@ -179,36 +179,130 @@ void SoLyPAudioProcessorEditor::paintLyrics(juce::Graphics& g)
     g.drawText("v" + juce::String(SOLYP_VERSION), getLocalBounds().reduced(10, 5), juce::Justification::bottomRight);
 }
 
-void SoLyPAudioProcessorEditor::paintPauseOverlay(juce::Graphics& g)
+void SoLyPAudioProcessorEditor::paintPausedLyrics(juce::Graphics& g)
 {
-    g.setColour(Theme::bgOverlay);
-    g.fillRect(getLocalBounds());
-    g.setColour(Theme::textPause);
-    g.setFont(juce::FontOptions(28.0f));
-    g.drawText(I18n::get("pause.text"), getLocalBounds(), juce::Justification::centred);
-
     const auto& song = processor.getCurrentSong();
-    if (song.displayLines.isEmpty() || SettingsManager::preLinesOnPause <= 0)
-        return;
+    if (song.displayLines.isEmpty()) return;
+
+    float lineHeight = SettingsManager::fontSize * 1.4f;
+    auto bounds = getLocalBounds().reduced(40, 20);
+    int visLines = SettingsManager::visibleLines;
+    int preLines = SettingsManager::preLinesOnPause;
+    bool useEllipsis = (SettingsManager::longLineBehavior != 0);
 
     double sh = processor.getScrollHead();
-    if (sh < 0.0) return;
+    if (sh < 0.0) sh = 0.0;
     int dispIdx = (int)sh;
+    double frac = sh - (double)dispIdx;
 
-    int nextLine = dispIdx + song.displayLines[dispIdx].parts;
-    g.setFont(juce::FontOptions(24.0f));
-    g.setColour(Theme::textPause);
-    auto bounds = getLocalBounds().removeFromBottom(getHeight() / 3);
-    auto y = static_cast<float>(bounds.getY() + 20);
+    int pauseIdx = processor.getPauseLineDisplayIdx();
+    int streamSize = song.displayLines.size() + 1;
 
-    for (int i = 0; i < SettingsManager::preLinesOnPause; ++i)
+    // ── normal lines (streamIdx < pauseIdx) ──
+    for (int i = 0; i < visLines; ++i)
     {
-        int idx = nextLine + i;
-        if (idx >= song.displayLines.size()) break;
-        g.drawText(song.displayLines[idx].text, bounds.withY(static_cast<int>(y)).withHeight(30),
-                   juce::Justification::centred);
-        y += 34;
+        int streamIdx = dispIdx + preLines - visLines + i;
+        if (streamIdx < 0 || streamIdx >= streamSize) continue;
+        if (streamIdx >= pauseIdx) continue;
+
+        float y = bounds.getBottom() - (float)(visLines - i + frac) * lineHeight;
+        if (y + lineHeight < (float)bounds.getY()) continue;
+        if (y > (float)bounds.getBottom()) continue;
+
+        g.setColour(Theme::textOnButton);
+        g.setFont(juce::FontOptions(SettingsManager::fontSize));
+        g.drawText(song.displayLines[streamIdx].text,
+            juce::Rectangle<float>((float)bounds.getX(), y, (float)bounds.getWidth(), lineHeight),
+            juce::Justification::centred, useEllipsis);
     }
+
+    // ── pre-lines (after pauseIdx in stream, scroll then freeze at bottom) ──
+    for (int p = 0; p < preLines; ++p)
+    {
+        int streamIdx = pauseIdx + 1 + p;
+        if (streamIdx < 0 || streamIdx >= streamSize) continue;
+
+        int realIdx = streamIdx - 1;
+        if (realIdx >= song.displayLines.size()) continue;
+
+        float naturalY = bounds.getBottom()
+            - (float)(preLines - (streamIdx - dispIdx) + frac) * lineHeight;
+        float bottomY = (float)bounds.getBottom() - (float)(preLines - p) * lineHeight;
+
+        if (naturalY < bottomY)
+            naturalY = bottomY;
+        if (naturalY > (float)bounds.getBottom()) continue;
+        if (naturalY + lineHeight < (float)bounds.getY()) continue;
+
+        g.setColour(Theme::textOnButton);
+        g.setFont(juce::FontOptions(SettingsManager::fontSize));
+        g.drawText(song.displayLines[realIdx].text,
+            juce::Rectangle<float>((float)bounds.getX(), naturalY, (float)bounds.getWidth(), lineHeight),
+            juce::Justification::centred, useEllipsis);
+    }
+
+    // ── pause text (scrolls, freezes at top) ──
+    if (pauseIdx >= 0)
+    {
+        float naturalY = bounds.getBottom()
+            - (float)(preLines - (pauseIdx - dispIdx) + frac) * lineHeight;
+
+        bool drawPause = false;
+        float pauseY = 0.0f;
+
+        if (naturalY + lineHeight < (float)bounds.getY())
+        {
+            drawPause = true;
+            pauseY = (float)bounds.getY();
+        }
+        else if (naturalY <= (float)bounds.getBottom())
+        {
+            drawPause = true;
+            pauseY = naturalY;
+            if (pauseY < (float)bounds.getY())
+                pauseY = (float)bounds.getY();
+        }
+
+        if (drawPause)
+        {
+            g.setColour(Theme::textPause);
+            g.setFont(juce::FontOptions(SettingsManager::fontSize));
+            g.drawText(I18n::get("pause.text"),
+                juce::Rectangle<float>((float)bounds.getX(), pauseY, (float)bounds.getWidth(), lineHeight),
+                juce::Justification::centred, useEllipsis);
+        }
+    }
+
+    // ── status bar ──
+    g.setColour(Theme::textStatusBar);
+    g.setFont(14.0f);
+
+    juce::String leftInfo;
+    if (song.fileTitle.isNotEmpty())
+        leftInfo = song.fileTitle + "  |  ";
+
+    int cs = processor.getCurrentSectionIndex();
+    if (cs < song.sections.size())
+    {
+        leftInfo += I18n::get("status.section") + " " + song.sections[cs].name
+            + "  |  " + I18n::get("status.bar") + " " + juce::String(processor.getCurrentBar())
+            + "  |  " + I18n::get("status.paused");
+    }
+
+    auto note = processor.getLastMidiNote();
+    if (note >= 0)
+    {
+        auto elapsed = juce::Time::getMillisecondCounterHiRes() - processor.getLastMidiNoteTime();
+        if (elapsed < 2000.0)
+        {
+            static const char* noteNames[] = { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" };
+            int octave = (note / 12) - 1 - SettingsManager::octaveSystem;
+            leftInfo += "  |  " + juce::String(noteNames[note % 12]) + juce::String(octave) + " (" + juce::String(note) + ")";
+        }
+    }
+
+    g.drawText(leftInfo, getLocalBounds().reduced(10, 5), juce::Justification::bottomLeft);
+    g.drawText("v" + juce::String(SOLYP_VERSION), getLocalBounds().reduced(10, 5), juce::Justification::bottomRight);
 }
 
 void SoLyPAudioProcessorEditor::paintError(juce::Graphics& g)
@@ -335,6 +429,8 @@ void SoLyPAudioProcessorEditor::applySongLoad(Song& song, const juce::File& file
 {
     if (song.fileTitle.isEmpty())
         song.fileTitle = file.getFileNameWithoutExtension();
+    lastFilename = file.getFileNameWithoutExtension() + ".json";
+    lastSongTitle = song.fileTitle;
     processor.loadSong(song);
     pendingChanges = false;
     if (editMode)

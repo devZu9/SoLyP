@@ -13,7 +13,7 @@ public:
         NextSection,
         Hybrid,
         Countdown3,
-        Countdown5,
+        Stop,
         Landmark
     };
 
@@ -26,7 +26,6 @@ public:
         int nextSectionNote = 4; // E
         int hybridNote = 5;   // F
         int countdown3Note = 7; // G
-        int countdown5Note = 9; // A
     };
 
     MidiManager();

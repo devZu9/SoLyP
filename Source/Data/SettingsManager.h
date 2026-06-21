@@ -25,7 +25,7 @@ namespace SettingsManager
     inline int triggerNextSection = 4;
     inline int triggerHybrid = 5;
     inline int triggerCountdown3 = 7;
-    inline int triggerCountdown5 = 9;
+    inline int triggerStop = 9;
 
     // sync
     inline bool manualBpmEnabled = false;

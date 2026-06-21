@@ -40,7 +40,7 @@ void MidiManager::processNote(int midiNote, std::function<void(Command)> callbac
             callback(Command::Hybrid);
         else if (noteInOctave == SettingsManager::triggerCountdown3)
             callback(Command::Countdown3);
-        else if (noteInOctave == SettingsManager::triggerCountdown5)
-            callback(Command::Countdown5);
+        else if (noteInOctave == SettingsManager::triggerStop)
+            callback(Command::Stop);
     }
 }

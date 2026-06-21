@@ -50,7 +50,7 @@
     "settings.triggerNext": "Trigger Next Section",
     "settings.triggerHybrid": "Trigger Hybrid",
     "settings.triggerCount3": "Trigger Countdown 3",
-    "settings.triggerCount5": "Trigger Countdown 5",
+    "settings.triggerStop": "Trigger Stop",
     "settings.manualBpm": "Manual BPM",
     "settings.manualBpmValue": "BPM value",
     "settings.alwaysOnTop": "Always on top",

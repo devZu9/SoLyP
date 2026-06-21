@@ -50,7 +50,7 @@
     "settings.triggerNext": "Триггер Next Section",
     "settings.triggerHybrid": "Триггер Hybrid",
     "settings.triggerCount3": "Триггер Отсчёт 3",
-    "settings.triggerCount5": "Триггер Отсчёт 5",
+    "settings.triggerStop": "Триггер Stop",
     "settings.manualBpm": "Ручной BPM",
     "settings.manualBpmValue": "BPM значение",
     "settings.alwaysOnTop": "Поверх всех окон",

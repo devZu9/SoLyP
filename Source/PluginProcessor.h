@@ -50,6 +50,9 @@ public:
     double getScrollHead() const { return scrollHead; }
     int getPreLinesOnPause() const { return preLinesOnPause; }
     void setPreLinesOnPause(int count) { preLinesOnPause = count; }
+    bool isPauseLineActive() const { return pauseLineActive; }
+    int getPauseLineDisplayIdx() const { return pauseLineDisplayIdx; }
+    int getResumeSkipIdx() const { return resumeSkipIdx; }
 
     void timerTick();
 
@@ -73,6 +76,9 @@ private:
     double lastTimerUpdate = 0.0;
 
     int preLinesOnPause = 1;
+    bool pauseLineActive = false;
+    int pauseLineDisplayIdx = -1;
+    int resumeSkipIdx = 0;
 
     int lastMidiNote = -1;
     double lastMidiNoteTime = 0.0;

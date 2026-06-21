@@ -246,11 +246,11 @@ SettingsComponent::SettingsComponent(std::function<void()> onLangChanged)
         int* trigPtrs[] = {
             &SettingsManager::triggerPlay, &SettingsManager::triggerPause,
             &SettingsManager::triggerNextSection, &SettingsManager::triggerHybrid,
-            &SettingsManager::triggerCountdown3, &SettingsManager::triggerCountdown5
+            &SettingsManager::triggerCountdown3, &SettingsManager::triggerStop
         };
         const char* trigKeys[] = {
             "settings.triggerPlay", "settings.triggerPause", "settings.triggerNext",
-            "settings.triggerHybrid", "settings.triggerCount3", "settings.triggerCount5"
+            "settings.triggerHybrid",             "settings.triggerCount3", "settings.triggerStop"
         };
 
         for (int idx = 0; idx < 6; ++idx)
