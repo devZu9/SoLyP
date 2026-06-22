@@ -12,6 +12,7 @@
     "status.bar": "Bar:",
     "status.playing": "PLAYING",
     "status.paused": "PAUSED",
+    "status.countdown": "COUNTDOWN",
     "status.stop": "STOP",
     "empty.title": "Load a song to begin",
     "empty.hint": "(click Edit in top-left)",

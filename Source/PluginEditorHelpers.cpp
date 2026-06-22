@@ -182,10 +182,19 @@ void SoLyPAudioProcessorEditor::paintLyrics(juce::Graphics& g)
 void SoLyPAudioProcessorEditor::paintPausedLyrics(juce::Graphics& g)
 {
     const auto& song = processor.getCurrentSong();
-    if (song.displayLines.isEmpty()) return;
+    if (song.sections.isEmpty()) return;
 
     float lineHeight = SettingsManager::fontSize * 1.4f;
     auto bounds = getLocalBounds().reduced(40, 20);
+
+    float availW = (float)bounds.getWidth();
+    if (song.displayLines.isEmpty()
+        || song.lastBuildWidth != availW
+        || song.lastBuildFontSize != SettingsManager::fontSize)
+        processor.getCurrentSong().rebuildDisplayLines(availW, SettingsManager::fontSize,
+            SettingsManager::longLineBehavior);
+
+    if (song.displayLines.isEmpty()) return;
     int visLines = SettingsManager::visibleLines;
     int preLines = SettingsManager::preLinesOnPause;
     bool useEllipsis = (SettingsManager::longLineBehavior != 0);
@@ -286,7 +295,8 @@ void SoLyPAudioProcessorEditor::paintPausedLyrics(juce::Graphics& g)
     {
         leftInfo += I18n::get("status.section") + " " + song.sections[cs].name
             + "  |  " + I18n::get("status.bar") + " " + juce::String(processor.getCurrentBar())
-            + "  |  " + I18n::get("status.paused");
+            + "  |  " + (processor.getTransportState() == SoLyPAudioProcessor::TransportState::Countdown
+                ? I18n::get("status.countdown") : I18n::get("status.paused"));
     }
 
     auto note = processor.getLastMidiNote();
@@ -303,6 +313,37 @@ void SoLyPAudioProcessorEditor::paintPausedLyrics(juce::Graphics& g)
 
     g.drawText(leftInfo, getLocalBounds().reduced(10, 5), juce::Justification::bottomLeft);
     g.drawText("v" + juce::String(SOLYP_VERSION), getLocalBounds().reduced(10, 5), juce::Justification::bottomRight);
+}
+
+void SoLyPAudioProcessorEditor::paintCountdown(juce::Graphics& g)
+{
+    int phase = processor.getCountdownPhase();
+    if (phase <= 0 || phase > 3) return;
+
+    double now = juce::Time::getMillisecondCounterHiRes();
+    double phaseDuration = processor.getCountdownPhaseDuration();
+    double totalElapsed = (phase - 1) * phaseDuration + (now - processor.getCountdownPhaseStart());
+    double totalDuration = phaseDuration * 3.0;
+    double progress = juce::jlimit(0.0, 1.0, totalElapsed / totalDuration);
+
+    auto area = getLocalBounds();
+    int textY = area.getCentreY() - 50;
+
+    // цифра
+    g.setColour(Theme::textPause);
+    g.setFont(juce::FontOptions(72.0f, juce::Font::bold));
+    g.drawText(juce::String(4 - phase), area.withY(textY).withHeight(80), juce::Justification::centred);
+
+    // прогресс-бар под цифрой
+    int barW = getWidth() / 2;
+    int barX = (getWidth() - barW) / 2;
+    int barY = textY + 90;
+    int barH = 8;
+
+    g.setColour(Theme::textPause.withAlpha(0.3f));
+    g.fillRect((float)barX, (float)barY, (float)barW, (float)barH);
+    g.setColour(Theme::textPause);
+    g.fillRect((float)barX, (float)barY, (float)(progress * barW), (float)barH);
 }
 
 void SoLyPAudioProcessorEditor::paintError(juce::Graphics& g)

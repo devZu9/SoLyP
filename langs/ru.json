@@ -12,6 +12,7 @@
     "status.bar": "Такт:",
     "status.playing": "ИГРАЕТ",
     "status.paused": "ПАУЗА",
+    "status.countdown": "ОТСЧЁТ",
     "status.stop": "СТОП",
     "empty.title": "Загрузите песню, чтобы начать",
     "empty.hint": "(нажмите Правку в левом верхнем углу)",

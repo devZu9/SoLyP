@@ -34,6 +34,7 @@ private:
 
     void paintLyrics(juce::Graphics& g);
     void paintPausedLyrics(juce::Graphics& g);
+    void paintCountdown(juce::Graphics& g);
     void paintError(juce::Graphics& g);
     void paintCursor(juce::Graphics& g);
     void resetCursorState();

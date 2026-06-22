@@ -200,7 +200,8 @@ void SoLyPAudioProcessorEditor::timerCallback()
 {
     auto state = processor.getTransportState();
     if (state == SoLyPAudioProcessor::TransportState::Playing
-        || state == SoLyPAudioProcessor::TransportState::Paused)
+        || state == SoLyPAudioProcessor::TransportState::Paused
+        || state == SoLyPAudioProcessor::TransportState::Countdown)
     {
         processor.timerTick();
         repaint();
@@ -330,7 +331,8 @@ void SoLyPAudioProcessorEditor::paint(juce::Graphics& g)
 
     auto state = processor.getTransportState();
 
-    if (state == SoLyPAudioProcessor::TransportState::Paused)
+    if (state == SoLyPAudioProcessor::TransportState::Paused
+        || state == SoLyPAudioProcessor::TransportState::Countdown)
     {
         paintPausedLyrics(g);
     }
@@ -338,6 +340,9 @@ void SoLyPAudioProcessorEditor::paint(juce::Graphics& g)
     {
         paintLyrics(g);
     }
+
+    if (state == SoLyPAudioProcessor::TransportState::Countdown)
+        paintCountdown(g);
 
     if (!lastError.isEmpty())
         paintError(g);

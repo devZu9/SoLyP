@@ -58,6 +58,9 @@ public:
     int getPauseLineDisplayIdx() const { return pauseLineDisplayIdx; }
     int getResumeSkipIdx() const { return resumeSkipIdx; }
     bool getShowPauseText() const { return showPauseText; }
+    int getCountdownPhase() const { return countdownPhase; }
+    double getCountdownPhaseStart() const { return countdownPhaseStart; }
+    double getCountdownPhaseDuration() const { return countdownPhaseDuration; }
 
     void timerTick();
 
@@ -85,6 +88,9 @@ private:
     bool pauseLineActive = false;
     int pauseLineDisplayIdx = -1;
     bool showPauseText = true;
+    int countdownPhase = 0;
+    double countdownPhaseStart = 0.0;
+    double countdownPhaseDuration = 0.0;
     int resumeSkipIdx = 0;
 
     int lastMidiNote = -1;

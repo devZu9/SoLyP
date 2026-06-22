@@ -95,6 +95,36 @@ void SoLyPAudioProcessor::timerTick()
     bool isPlaying = (transportState == TransportState::Playing);
     bool isPaused = (transportState == TransportState::Paused);
 
+    if (transportState == TransportState::Countdown && countdownPhase > 0)
+    {
+        double elapsed = now - countdownPhaseStart;
+
+        if (elapsed >= countdownPhaseDuration)
+        {
+            countdownPhase++;
+            if (countdownPhase > 3)
+            {
+                countdownPhase = 0;
+                pauseLineActive = false;
+                showPauseText = true;
+                if (pauseLineDisplayIdx >= 0)
+                    enterPlay();
+                else
+                {
+                    transportState = TransportState::Stopped;
+                    if (onStateChanged) onStateChanged();
+                }
+                lastTimerUpdate = now;
+                return;
+            }
+            countdownPhaseStart = now;
+            if (onStateChanged) onStateChanged();
+        }
+        if (onStateChanged) onStateChanged();
+        lastTimerUpdate = now;
+        return;
+    }
+
     if (scrollHead >= 0.0 && (isPlaying || isPaused))
     {
         if (currentSong.displayLines.isEmpty())
@@ -167,7 +197,8 @@ void SoLyPAudioProcessor::enterPlay()
 {
     pauseLineActive = false;
 
-    if (transportState == TransportState::Paused && pauseLineDisplayIdx >= 0)
+    if ((transportState == TransportState::Paused || transportState == TransportState::Countdown)
+        && pauseLineDisplayIdx >= 0)
     {
         resumeSkipIdx = pauseLineDisplayIdx;
         scrollHead = (double)pauseLineDisplayIdx;
@@ -209,17 +240,25 @@ void SoLyPAudioProcessor::enterPause()
     if (transportState == TransportState::Stopped)
     {
         showPauseText = false;
-        int firstIdx = 0;
-        for (int i = 0; i < currentSong.displayLines.size(); ++i)
+        if (scrollHead < 0.0)
         {
-            if (currentSong.displayLines[i].sectionIndex == currentSectionIndex)
+            int firstIdx = 0;
+            for (int i = 0; i < currentSong.displayLines.size(); ++i)
             {
-                firstIdx = i;
-                break;
+                if (currentSong.displayLines[i].sectionIndex == currentSectionIndex)
+                {
+                    firstIdx = i;
+                    break;
+                }
             }
+            pauseLineDisplayIdx = firstIdx;
+            scrollHead = (double)(firstIdx + SettingsManager::visibleLines + preLinesOnPause);
         }
-        pauseLineDisplayIdx = firstIdx;
-        scrollHead = (double)(firstIdx + SettingsManager::visibleLines + preLinesOnPause);
+        else
+        {
+            pauseLineDisplayIdx = (int)scrollHead;
+            scrollHead = (double)((int)scrollHead + SettingsManager::visibleLines + preLinesOnPause);
+        }
     }
     else
     {
@@ -249,27 +288,48 @@ void SoLyPAudioProcessor::enterStop()
     if (onStateChanged) onStateChanged();
 }
 
-// переход в режим обратного отсчёта: готовит старт с начала секции (анимация отсчёта — в будущем)
+// переход в режим обратного отсчёта (из Stopped/Paused): готовит pre-lines, запускает 3-2-1
 void SoLyPAudioProcessor::enterCountdown()
 {
-    pauseLineActive = false;
-    resumeSkipIdx = 0;
-    lastTimerUpdate = juce::Time::getMillisecondCounterHiRes();
-    if (scrollHead < 0.0 && !currentSong.displayLines.isEmpty())
+    if (transportState == TransportState::Playing
+        || transportState == TransportState::Countdown)
+        return;
+
+    if (transportState == TransportState::Stopped)
     {
-        bool found = false;
-        for (int i = 0; i < currentSong.displayLines.size(); ++i)
+        showPauseText = false;
+        if (scrollHead < 0.0)
         {
-            if (currentSong.displayLines[i].sectionIndex == currentSectionIndex)
+            int firstIdx = 0;
+            for (int i = 0; i < currentSong.displayLines.size(); ++i)
             {
-                scrollHead = (double)i;
-                found = true;
-                break;
+                if (currentSong.displayLines[i].sectionIndex == currentSectionIndex)
+                {
+                    firstIdx = i;
+                    break;
+                }
             }
+            pauseLineDisplayIdx = firstIdx;
+            scrollHead = (double)(firstIdx + SettingsManager::visibleLines + preLinesOnPause);
         }
-        if (!found)
-            scrollHead = 0.0;
+        else
+        {
+            pauseLineDisplayIdx = (int)scrollHead;
+            scrollHead = (double)((int)scrollHead + SettingsManager::visibleLines + preLinesOnPause);
+        }
     }
+    else // Paused — keep showPauseText, pauseLineDisplayIdx and scrollHead unchanged
+    {
+    }
+    pauseLineActive = true;
+
+    double bpm = SettingsManager::manualBpmEnabled
+        ? (double)SettingsManager::manualBpmValue : currentBpm;
+    if (bpm <= 0.0) bpm = 120.0;
+    countdownPhaseDuration = 0.5 * (60000.0 / bpm * (double)SettingsManager::timeSignature);
+
+    countdownPhase = 1;
+    countdownPhaseStart = juce::Time::getMillisecondCounterHiRes();
 
     transportState = TransportState::Countdown;
     if (onStateChanged) onStateChanged();
@@ -353,14 +413,20 @@ void SoLyPAudioProcessor::processMidiMessage(const juce::MidiMessage& msg)
         switch (cmd)
         {
         case MidiManager::Command::Play:
+            if (transportState != TransportState::Countdown)
+                enterPlay();
+            break;
         case MidiManager::Command::Countdown3:
-            enterPlay();
+            if (transportState != TransportState::Countdown)
+                enterCountdown();
             break;
         case MidiManager::Command::Stop:
-            enterStop();
+            if (transportState != TransportState::Countdown)
+                enterStop();
             break;
         case MidiManager::Command::Pause:
-            enterPause();
+            if (transportState != TransportState::Countdown)
+                enterPause();
             break;
         case MidiManager::Command::NextSection:
             switchToNextSection();
