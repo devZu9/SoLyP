@@ -38,7 +38,11 @@ public:
 
     enum class TransportState { Stopped, Playing, Paused, Countdown };
     TransportState getTransportState() const { return transportState; }
-    void setTransportState(TransportState state);
+
+    void enterPlay();
+    void enterPause();
+    void enterStop();
+    void enterCountdown();
 
     const Song& getCurrentSong() const { return currentSong; }
     void loadSong(const Song& song);
@@ -53,6 +57,7 @@ public:
     bool isPauseLineActive() const { return pauseLineActive; }
     int getPauseLineDisplayIdx() const { return pauseLineDisplayIdx; }
     int getResumeSkipIdx() const { return resumeSkipIdx; }
+    bool getShowPauseText() const { return showPauseText; }
 
     void timerTick();
 
@@ -61,9 +66,10 @@ public:
 private:
     void parameterChanged(const juce::String& parameterID, float newValue) override;
 
+    void processMidiMessage(const juce::MidiMessage& msg);
+
     void switchToSection(int index);
     void switchToNextSection();
-    void processMidiMessage(const juce::MidiMessage& msg);
 
     juce::AudioProcessorValueTreeState apvts;
 
@@ -78,6 +84,7 @@ private:
     int preLinesOnPause = 1;
     bool pauseLineActive = false;
     int pauseLineDisplayIdx = -1;
+    bool showPauseText = true;
     int resumeSkipIdx = 0;
 
     int lastMidiNote = -1;

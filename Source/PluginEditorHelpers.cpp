@@ -242,7 +242,7 @@ void SoLyPAudioProcessorEditor::paintPausedLyrics(juce::Graphics& g)
     }
 
     // ── pause text (scrolls, freezes at top) ──
-    if (pauseIdx >= 0)
+    if (pauseIdx >= 0 && processor.getShowPauseText())
     {
         float naturalY = bounds.getBottom()
             - (float)(preLines - (pauseIdx - dispIdx) + frac) * lineHeight;

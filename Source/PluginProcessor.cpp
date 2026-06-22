@@ -28,6 +28,7 @@ SoLyPAudioProcessor::~SoLyPAudioProcessor()
     apvts.removeParameterListener("preLines", this);
 }
 
+// обновление настроек из APVTS при изменении параметра (напр. preLines из слайдера)
 void SoLyPAudioProcessor::parameterChanged(const juce::String& parameterID, float newValue)
 {
     if (parameterID == "preLines")
@@ -47,6 +48,7 @@ void SoLyPAudioProcessor::setCurrentProgram(int) {}
 const juce::String SoLyPAudioProcessor::getProgramName(int) { return {}; }
 void SoLyPAudioProcessor::changeProgramName(int, const juce::String&) {}
 
+// подготовка аудио (плагин не обрабатывает звук — ничего не делаем)
 void SoLyPAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock)
 {
     juce::ignoreUnused(sampleRate, samplesPerBlock);
@@ -54,6 +56,7 @@ void SoLyPAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock)
 
 void SoLyPAudioProcessor::releaseResources() {}
 
+// главный аудио-цикл: читает BPM из DAW, автостарт при Play, обрабатывает MIDI-сообщения
 void SoLyPAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
 {
     juce::ScopedNoDenormals noDenormals;
@@ -72,7 +75,7 @@ void SoLyPAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::M
             if (pos.getIsPlaying())
             {
                 if (transportState == TransportState::Stopped || transportState == TransportState::Paused)
-                    setTransportState(TransportState::Playing);
+                    enterPlay();
             }
         }
     }
@@ -85,6 +88,7 @@ void SoLyPAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::M
     }
 }
 
+// таймер GUI (20 Гц): продвигает scrollHead по BPM, останавливает в конце песни
 void SoLyPAudioProcessor::timerTick()
 {
     double now = juce::Time::getMillisecondCounterHiRes();
@@ -106,6 +110,7 @@ void SoLyPAudioProcessor::timerTick()
         {
             if (isPlaying)
             {
+                scrollHead = (double)(currentSong.displayLines.size() - 1);
                 transportState = TransportState::Stopped;
                 if (onStateChanged) onStateChanged();
             }
@@ -132,8 +137,8 @@ void SoLyPAudioProcessor::timerTick()
             {
                 if (isPlaying)
                 {
-                    transportState = TransportState::Stopped;
                     scrollHead = (double)(currentSong.displayLines.size() - 1);
+                    transportState = TransportState::Stopped;
                     if (onStateChanged) onStateChanged();
                 }
                 else
@@ -157,57 +162,116 @@ void SoLyPAudioProcessor::timerTick()
     lastTimerUpdate = now;
 }
 
-void SoLyPAudioProcessor::setTransportState(TransportState state)
+// переход в режим воспроизведения: из паузы — возобновление с пред-строк, иначе — старт с начала секции
+void SoLyPAudioProcessor::enterPlay()
 {
-    auto oldState = transportState;
-    transportState = state;
+    pauseLineActive = false;
 
-    if (state == TransportState::Playing)
+    if (transportState == TransportState::Paused && pauseLineDisplayIdx >= 0)
     {
-        pauseLineActive = false;
-
-        if (oldState == TransportState::Paused && pauseLineDisplayIdx >= 0)
+        resumeSkipIdx = pauseLineDisplayIdx;
+        scrollHead = (double)pauseLineDisplayIdx;
+        lastTimerUpdate = juce::Time::getMillisecondCounterHiRes();
+    }
+    else
+    {
+        resumeSkipIdx = 0;
+        lastTimerUpdate = juce::Time::getMillisecondCounterHiRes();
+        if (scrollHead < 0.0 && !currentSong.displayLines.isEmpty())
         {
-            resumeSkipIdx = pauseLineDisplayIdx;
-            scrollHead = (double)pauseLineDisplayIdx;
-            lastTimerUpdate = juce::Time::getMillisecondCounterHiRes();
-        }
-        else
-        {
-            resumeSkipIdx = 0;
-            lastTimerUpdate = juce::Time::getMillisecondCounterHiRes();
-            if (scrollHead < 0.0 && !currentSong.displayLines.isEmpty())
+            bool found = false;
+            for (int i = 0; i < currentSong.displayLines.size(); ++i)
             {
-                bool found = false;
-                for (int i = 0; i < currentSong.displayLines.size(); ++i)
+                if (currentSong.displayLines[i].sectionIndex == currentSectionIndex)
                 {
-                    if (currentSong.displayLines[i].sectionIndex == currentSectionIndex)
-                    {
-                        scrollHead = (double)i;
-                        found = true;
-                        break;
-                    }
+                    scrollHead = (double)i;
+                    found = true;
+                    break;
                 }
-                if (!found)
-                    scrollHead = 0.0;
             }
+            if (!found)
+                scrollHead = 0.0;
         }
     }
-    else if (state == TransportState::Paused)
+
+    transportState = TransportState::Playing;
+    if (onStateChanged) onStateChanged();
+}
+
+// переход в режим паузы: из Stopped — показывает пред-строки начала секции; из Playing — плавная анимация пауза-сообщения
+void SoLyPAudioProcessor::enterPause()
+{
+    if (transportState == TransportState::Paused)
+        return;
+
+    pauseLineActive = true;
+
+    if (transportState == TransportState::Stopped)
     {
-        pauseLineActive = true;
+        showPauseText = false;
+        int firstIdx = 0;
+        for (int i = 0; i < currentSong.displayLines.size(); ++i)
+        {
+            if (currentSong.displayLines[i].sectionIndex == currentSectionIndex)
+            {
+                firstIdx = i;
+                break;
+            }
+        }
+        pauseLineDisplayIdx = firstIdx;
+        scrollHead = (double)(firstIdx + SettingsManager::visibleLines + preLinesOnPause);
+    }
+    else
+    {
+        showPauseText = true;
         int offset = preLinesOnPause;
         if (scrollHead >= 0.0 && (int)(scrollHead + offset) < currentSong.displayLines.size())
             pauseLineDisplayIdx = (int)(scrollHead + offset) + 1;
         else
             pauseLineDisplayIdx = -1;
     }
-    else if (state == TransportState::Stopped)
+
+    transportState = TransportState::Paused;
+    if (onStateChanged) onStateChanged();
+}
+
+// переход в режим останова: сбрасывает прокрутку, убирает пауза-анимацию, показывает центр секции
+void SoLyPAudioProcessor::enterStop()
+{
+
+    if (transportState == TransportState::Stopped)
+        return;
+
+    pauseLineActive = false;
+    scrollHead = -1.0;
+
+    transportState = TransportState::Stopped;
+    if (onStateChanged) onStateChanged();
+}
+
+// переход в режим обратного отсчёта: готовит старт с начала секции (анимация отсчёта — в будущем)
+void SoLyPAudioProcessor::enterCountdown()
+{
+    pauseLineActive = false;
+    resumeSkipIdx = 0;
+    lastTimerUpdate = juce::Time::getMillisecondCounterHiRes();
+    if (scrollHead < 0.0 && !currentSong.displayLines.isEmpty())
     {
-        pauseLineActive = false;
-        scrollHead = -1.0;
+        bool found = false;
+        for (int i = 0; i < currentSong.displayLines.size(); ++i)
+        {
+            if (currentSong.displayLines[i].sectionIndex == currentSectionIndex)
+            {
+                scrollHead = (double)i;
+                found = true;
+                break;
+            }
+        }
+        if (!found)
+            scrollHead = 0.0;
     }
 
+    transportState = TransportState::Countdown;
     if (onStateChanged) onStateChanged();
 }
 
@@ -216,12 +280,12 @@ void SoLyPAudioProcessor::loadSong(const Song& song)
     currentSong = song;
     resumeSkipIdx = 0;
     currentSectionIndex = 0;
-    scrollHead = -1.0;
     lastTimerUpdate = 0.0;
     transportState = TransportState::Stopped;
     if (onStateChanged) onStateChanged();
 }
 
+// переключение на секцию по индексу: ставит scrollHead на её начало, во время паузы — обновляет pre-lines
 void SoLyPAudioProcessor::switchToSection(int index)
 {
     if (index < 0 || index >= static_cast<int>(currentSong.sections.size()))
@@ -250,7 +314,11 @@ void SoLyPAudioProcessor::switchToSection(int index)
     }
 
     if (pauseLineActive && transportState == TransportState::Paused)
-        pauseLineDisplayIdx = (int)(scrollHead + preLinesOnPause) + 1;
+    {
+        int sectionStart = (int)scrollHead;
+        pauseLineDisplayIdx = sectionStart;
+        scrollHead = (double)(sectionStart + SettingsManager::visibleLines + preLinesOnPause);
+    }
 
     if (onStateChanged) onStateChanged();
 }
@@ -267,6 +335,7 @@ void SoLyPAudioProcessor::switchToNextSection()
     switchToSection(next);
 }
 
+// обработка входящей MIDI-ноты: проверка октавы/канала, вызов MidiManager, переходы enter*()
 void SoLyPAudioProcessor::processMidiMessage(const juce::MidiMessage& msg)
 {
     if (!msg.isNoteOn())
@@ -285,22 +354,20 @@ void SoLyPAudioProcessor::processMidiMessage(const juce::MidiMessage& msg)
         {
         case MidiManager::Command::Play:
         case MidiManager::Command::Countdown3:
-            if (transportState == TransportState::Paused || transportState == TransportState::Stopped)
-                setTransportState(TransportState::Playing);
+            enterPlay();
             break;
         case MidiManager::Command::Stop:
-            setTransportState(TransportState::Stopped);
+            enterStop();
             break;
         case MidiManager::Command::Pause:
-            if (transportState == TransportState::Playing || transportState == TransportState::Countdown)
-                setTransportState(TransportState::Paused);
+            enterPause();
             break;
         case MidiManager::Command::NextSection:
             switchToNextSection();
             break;
         case MidiManager::Command::Hybrid:
             switchToNextSection();
-            setTransportState(TransportState::Playing);
+            enterPlay();
             break;
         case MidiManager::Command::Landmark:
         {
@@ -313,6 +380,7 @@ void SoLyPAudioProcessor::processMidiMessage(const juce::MidiMessage& msg)
     });
 }
 
+// сохранение состояния APVTS (BPM, канал, preLines) в бинарный блок для DAW
 void SoLyPAudioProcessor::getStateInformation(juce::MemoryBlock& destData)
 {
     auto state = apvts.copyState();
@@ -320,6 +388,7 @@ void SoLyPAudioProcessor::getStateInformation(juce::MemoryBlock& destData)
     copyXmlToBinary(*xml, destData);
 }
 
+// загрузка состояния APVTS из бинарного блока (восстановление после перезапуска DAW)
 void SoLyPAudioProcessor::setStateInformation(const void* data, int sizeInBytes)
 {
     std::unique_ptr<juce::XmlElement> xml(getXmlFromBinary(data, sizeInBytes));
