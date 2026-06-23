@@ -16,7 +16,9 @@ namespace
 }
 
 SoLyPAudioProcessor::SoLyPAudioProcessor()
-    :       AudioProcessor(BusesProperties().withOutput("Output", juce::AudioChannelSet::stereo(), true)),
+    :       AudioProcessor(BusesProperties()
+                    .withInput("Input", juce::AudioChannelSet::stereo(), true)
+                    .withOutput("Output", juce::AudioChannelSet::stereo(), true)),
       apvts(*this, nullptr, "Parameters", createParameterLayout())
 {
     apvts.addParameterListener("preLines", this);
@@ -38,9 +40,16 @@ void SoLyPAudioProcessor::parameterChanged(const juce::String& parameterID, floa
 const juce::String SoLyPAudioProcessor::getName() const { return "SoLyP"; }
 
 bool SoLyPAudioProcessor::acceptsMidi() const { return true; }
-bool SoLyPAudioProcessor::producesMidi() const { return false; }
-bool SoLyPAudioProcessor::isMidiEffect() const { return true; }
+bool SoLyPAudioProcessor::producesMidi() const { return true; }
+bool SoLyPAudioProcessor::isMidiEffect() const { return false; }
 double SoLyPAudioProcessor::getTailLengthSeconds() const { return 0.0; }
+
+bool SoLyPAudioProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const
+{
+    if (layouts.getMainOutputChannelSet() != juce::AudioChannelSet::stereo())
+        return false;
+    return true;
+}
 
 int SoLyPAudioProcessor::getNumPrograms() { return 1; }
 int SoLyPAudioProcessor::getCurrentProgram() { return 0; }

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.24)
-project(SoLyP VERSION 1.0.12 LANGUAGES CXX)
+project(SoLyP VERSION 1.0.14 LANGUAGES CXX)
 
 cmake_policy(SET CMP0169 OLD)
 
@@ -33,14 +33,17 @@ set(SoLyP_SOURCES
 
 juce_add_plugin(SoLyP
     PRODUCT_NAME                     "SoLyP"
+    COMPANY_NAME                     "Miska Moloka"
     FORMATS                          VST3 Standalone
-    PLUGIN_MANUFACTURER_CODE         Soly
-    PLUGIN_CODE                      LyPr
+    PLUGIN_MANUFACTURER_CODE         MskM
+    PLUGIN_CODE                      spMM
+    BUNDLE_ID                        "com.miskamoloka.solyp"
     DESCRIPTION                      "Song Lyrics Prompter"
     VERSION                          ${PROJECT_VERSION}
 
     NEEDS_MIDI_INPUT                 TRUE
-    IS_MIDI_EFFECT                   TRUE
+    NEEDS_MIDI_OUTPUT                TRUE
+    IS_MIDI_EFFECT                   FALSE
     EDITOR_WANTS_KEYBOARD_FOCUS      FALSE
     COPY_PLUGIN_AFTER_BUILD          FALSE
     ICON_PATH                        "${CMAKE_SOURCE_DIR}/Source/UI/icons/app_icon.ico"

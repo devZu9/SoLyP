@@ -153,3 +153,33 @@ idx = dispIdx + preLines - visLines + i
 - Все файлы UTF-8 без BOM
 - MSVC: `/utf-8` в CMakeLists.txt
 - Кириллица: `juce::String::fromUTF8()` для литералов
+
+---
+
+## Совместимость с Ableton Live
+
+### Проблема
+Ableton Live отказывается загружать VST3 с ошибкой:
+```
+VST3: plugin has an effect category, but no valid audio input bus
+VST3: No valid input bus could be found
+VST3: Failed: SoLyP
+```
+
+### Корень проблемы
+Ableton **требует аудио-вход** (`withInput`) для VST3-эффектов. Без него плагин загружается в SAVIHost, Bitwig, но не в Ableton.
+
+### Решение
+В `PluginProcessor.cpp`, конструктор `AudioProcessor`, `BusesProperties` должен содержать **оба** bus'а:
+```cpp
+: AudioProcessor(BusesProperties()
+        .withInput("Input", AudioChannelSet::stereo(), true)
+        .withOutput("Output", AudioChannelSet::stereo(), true))
+```
+
+### Что ещё влияет на загрузку в Ableton
+1. **`IS_MIDI_EFFECT TRUE`** — Ableton **не загружает** VST3 с этим флагом. Решение: `IS_MIDI_EFFECT FALSE`.
+2. **`isMidiEffect()` override** — должен возвращать `false` (синхронизация с CMake).
+3. **`isBusesLayoutSupported()`** — проверяет, что Ableton-запрошенная конфигурация bus'ов допустима.
+4. **`producesMidi()`** — должен возвращать `true` для MIDI-плагинов.
+5. **Лог Ableton:** `%APPDATA%\Ableton\Live X.Y.Z\Preferences\Log.txt` — содержит detailed ошибки загрузки VST3.

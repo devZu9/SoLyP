@@ -32,10 +32,29 @@ void SoLyPAudioProcessorEditor::paintLyrics(juce::Graphics& g)
     const auto& song = processor.getCurrentSong();
     if (song.sections.isEmpty())
     {
+        auto area = getLocalBounds();
+
+        g.setColour(Theme::textActiveLine);
+        g.setFont(juce::FontOptions(28.0f));
+        g.drawText("Song Lyrics Prompter",
+                   juce::Rectangle<int>(0, area.getY() + area.getHeight() / 2 - 80, area.getWidth(), 40),
+                   juce::Justification::centred, false);
+
         g.setColour(Theme::textHint);
+        g.setFont(juce::FontOptions(20.0f));
+        g.drawText("(by MM)",
+                   juce::Rectangle<int>(0, area.getY() + area.getHeight() / 2 - 45, area.getWidth(), 30),
+                   juce::Justification::centred, false);
+
+        g.setFont(juce::FontOptions(16.0f));
+        g.drawText("v." + String(SOLYP_VERSION),
+                   juce::Rectangle<int>(0, area.getY() + area.getHeight() / 2 - 20, area.getWidth(), 25),
+                   juce::Justification::centred, false);
+
         g.setFont(juce::FontOptions(24.0f));
-        g.drawText(I18n::get("empty.title") + "\n" + I18n::get("empty.hint"),
-                   getLocalBounds(), juce::Justification::centred);
+        g.drawText(I18n::get("empty.title"),
+                   juce::Rectangle<int>(0, area.getY() + area.getHeight() / 2 + 25, area.getWidth(), 35),
+                   juce::Justification::centred, false);
         return;
     }
 
