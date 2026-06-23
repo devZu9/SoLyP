@@ -331,7 +331,8 @@ void SoLyPAudioProcessorEditor::paint(juce::Graphics& g)
 
     auto state = processor.getTransportState();
 
-    if (state == SoLyPAudioProcessor::TransportState::Paused
+    if (processor.isPauseLineActive()
+        || state == SoLyPAudioProcessor::TransportState::Paused
         || state == SoLyPAudioProcessor::TransportState::Countdown)
     {
         paintPausedLyrics(g);

@@ -4,6 +4,16 @@
 
 namespace
 {
+    void logToFile(const juce::String& msg)
+    {
+        auto file = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory)
+            .getChildFile("SoLyP").getChildFile("debug.log");
+        file.appendText(msg + "\n", false, false);
+    }
+}
+
+namespace
+{
     juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
     {
         juce::AudioProcessorValueTreeState::ParameterLayout layout;
@@ -81,11 +91,6 @@ void SoLyPAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::M
             auto& pos = *opt;
             if (pos.getBpm().hasValue())
                 currentBpm = *pos.getBpm();
-            if (pos.getIsPlaying())
-            {
-                if (transportState == TransportState::Stopped || transportState == TransportState::Paused)
-                    enterPlay();
-            }
         }
     }
 
@@ -93,7 +98,11 @@ void SoLyPAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::M
     {
         auto message = metadata.getMessage();
         if (message.isNoteOn())
+        {
+            logToFile("[SoLyP] processBlock: note=" + juce::String(message.getNoteNumber())
+                + " ch=" + juce::String(message.getChannel()));
             processMidiMessage(message);
+        }
     }
 }
 
@@ -204,6 +213,9 @@ void SoLyPAudioProcessor::timerTick()
 // переход в режим воспроизведения: из паузы — возобновление с пред-строк, иначе — старт с начала секции
 void SoLyPAudioProcessor::enterPlay()
 {
+    logToFile("[SoLyP] enterPlay() called from state=" + juce::String((int)transportState)
+        + " pauseLineDisplayIdx=" + juce::String(pauseLineDisplayIdx));
+
     pauseLineActive = false;
 
     if ((transportState == TransportState::Paused || transportState == TransportState::Countdown)
@@ -283,15 +295,11 @@ void SoLyPAudioProcessor::enterPause()
     if (onStateChanged) onStateChanged();
 }
 
-// переход в режим останова: сбрасывает прокрутку, убирает пауза-анимацию, показывает центр секции
+// переход в режим останова: замораживает экран, не меняет scrollHead и pauseLineActive
 void SoLyPAudioProcessor::enterStop()
 {
-
     if (transportState == TransportState::Stopped)
         return;
-
-    pauseLineActive = false;
-    scrollHead = -1.0;
 
     transportState = TransportState::Stopped;
     if (onStateChanged) onStateChanged();
@@ -348,6 +356,8 @@ void SoLyPAudioProcessor::loadSong(const Song& song)
 {
     currentSong = song;
     resumeSkipIdx = 0;
+    pauseLineActive = false;
+    scrollHead = -1.0;
     currentSectionIndex = 0;
     lastTimerUpdate = 0.0;
     transportState = TransportState::Stopped;
@@ -419,6 +429,7 @@ void SoLyPAudioProcessor::processMidiMessage(const juce::MidiMessage& msg)
     if (onStateChanged) onStateChanged();
 
     midiManager.processNote(msg.getNoteNumber(), [this](MidiManager::Command cmd) {
+        logToFile("[SoLyP] cmd=" + juce::String((int)cmd) + " state=" + juce::String((int)transportState));
         switch (cmd)
         {
         case MidiManager::Command::Play:
