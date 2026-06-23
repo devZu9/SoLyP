@@ -139,11 +139,10 @@ void SoLyPAudioProcessor::timerTick()
             if (onStateChanged) onStateChanged();
         }
         if (onStateChanged) onStateChanged();
-        lastTimerUpdate = now;
-        return;
+        // не return — scrollHead продолжает двигаться
     }
 
-    if (scrollHead >= 0.0 && (isPlaying || isPaused))
+    if (scrollHead >= 0.0 && (isPlaying || isPaused || transportState == TransportState::Countdown))
     {
         if (currentSong.displayLines.isEmpty())
         {
