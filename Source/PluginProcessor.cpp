@@ -177,6 +177,8 @@ void SoLyPAudioProcessor::timerTick()
         if (timePerLine > 0.0)
         {
             double advance = elapsed / (timePerLine * 1000.0);
+            if (transportState == TransportState::Countdown && countdownPhase > 0)
+                advance *= 3.0;
             double newHead = scrollHead + advance;
 
             int newIdx = (int)newHead;
