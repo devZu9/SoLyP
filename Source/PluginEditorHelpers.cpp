@@ -4,12 +4,14 @@
 #include "Data/SettingsManager.h"
 #include "Data/I18n.h"
 
+// путь к папке songs в Документах
 juce::String getDefaultSongDir()
 {
     return juce::File::getSpecialLocation(juce::File::userDocumentsDirectory)
         .getChildFile("SoLyP").getChildFile("songs").getFullPathName();
 }
 
+// собирает текст для редактора из textSong[] (плоский → [секция]\nстроки)
 juce::String songToText(const Song& song)
 {
     juce::String result;
@@ -27,6 +29,7 @@ juce::String songToText(const Song& song)
     return result.trimEnd();
 }
 
+// ищет первую строку в displayLines[] с заданным sectionId, возвращает индекс или -1
 int findSectionStart(const Song& song, int sectionId) {
     for (int i = 0; i < song.displayLines.size(); ++i)
         if (song.displayLines[i].sectionId == sectionId)
@@ -36,6 +39,7 @@ int findSectionStart(const Song& song, int sectionId) {
 
 // ── инициализация ──────────────────────────────────────────────────────────
 
+// инициализация слотов при загрузке песни: создаёт массив, заполняет центрированными строками
 void SoLyPAudioProcessorEditor::initSlots() {
     const auto& song = processor.getCurrentSong();
     if (song.displayLines.isEmpty()) { slots.clear(); return; }
@@ -70,6 +74,7 @@ void SoLyPAudioProcessorEditor::initSlots() {
     lastScrollTime = juce::Time::getMillisecondCounterHiRes();
 }
 
+// подготовка предварительно показанных строк: нижние pre слотов заполняются текстом, верхние — пусто
 void SoLyPAudioProcessorEditor::setupPreLines() {
     const auto& song = processor.getCurrentSong();
     int N = (int)slots.size();
@@ -90,6 +95,7 @@ void SoLyPAudioProcessorEditor::setupPreLines() {
     }
 }
 
+// скорость скролла: время прохода одной строки через окно (мс) — зависит от BPM и parts
 double SoLyPAudioProcessorEditor::getTimePerLine() {
     const auto& song = processor.getCurrentSong();
     if (song.displayLines.isEmpty()) return -1.0;
@@ -107,6 +113,7 @@ double SoLyPAudioProcessorEditor::getTimePerLine() {
     return barDuration / ((double)SettingsManager::linesPerBar * (double)parts);
 }
 
+// базовая Y-позиция слота idx с учётом смещения offset (в долях lineHeight)
 double SoLyPAudioProcessorEditor::getSlotY(int idx, double offset) const {
     auto bounds = getLocalBounds().reduced(40, 20);
     float lh = SettingsManager::fontSize * 1.4f;
@@ -116,6 +123,7 @@ double SoLyPAudioProcessorEditor::getSlotY(int idx, double offset) const {
 
 // ── отрисовка ──────────────────────────────────────────────────────────────
 
+// проверка перед отрисовкой: пересобрать displayLines если изменился шрифт/ширина
 void SoLyPAudioProcessorEditor::ensureReady()
 {
     const auto& song = processor.getCurrentSong();
@@ -130,6 +138,7 @@ void SoLyPAudioProcessorEditor::ensureReady()
         processor.getCurrentSong().rebuildDisplayLines(availW, SettingsManager::fontSize);
 }
 
+// приветственный экран: "Song Lyrics Prompter", "(by MM)", версия, "Загрузите песню..."
 void SoLyPAudioProcessorEditor::initView(juce::Graphics& g)
 {
     auto area = getLocalBounds();
@@ -153,59 +162,64 @@ void SoLyPAudioProcessorEditor::initView(juce::Graphics& g)
                juce::Justification::centred, false);
 }
 
-void SoLyPAudioProcessorEditor::paintLines(juce::Graphics& g)
+// статическая отрисовка после загрузки: слоты по центру, без анимации
+void SoLyPAudioProcessorEditor::initPaint(juce::Graphics& g)
 {
     const auto& song = processor.getCurrentSong();
-    auto bounds = getLocalBounds().reduced(40, 20);
-    float lh = SettingsManager::fontSize * 1.4f;
-
-    // ── приветствие, если песня не загружена ──
     if (song.textSong.isEmpty()) { initView(g); return; }
     if (slots.empty()) return;
 
+    auto bounds = getLocalBounds().reduced(40, 20);
+    float lh = SettingsManager::fontSize * 1.4f;
+    int N = (int)slots.size();
+
+    for (int i = 0; i < N; ++i)
+    {
+        if (slots[i].text.isEmpty()) continue;
+        float y = (float)slots[i].y;
+        if (y + lh < (float)bounds.getY() || y > (float)bounds.getBottom()) continue;
+        g.setColour(Theme::textOnButton);
+        g.setFont(juce::FontOptions(SettingsManager::fontSize));
+        g.drawText(slots[i].text,
+            juce::Rectangle<float>((float)bounds.getX(), y, (float)bounds.getWidth(), lh),
+            juce::Justification::centred, false);
+    }
+}
+
+// отрисовка скролла (Play/Pause/Countdown/Stop): Y = база - scrollOffset*lh
+void SoLyPAudioProcessorEditor::paintScroll(juce::Graphics& g)
+{
+    const auto& song = processor.getCurrentSong();
+    if (song.textSong.isEmpty()) { initView(g); return; }
+    if (slots.empty()) return;
+
+    auto bounds = getLocalBounds().reduced(40, 20);
+    float lh = SettingsManager::fontSize * 1.4f;
     int N = (int)slots.size();
     int pre = std::min(SettingsManager::preLinesOnPause, N);
     auto state = processor.getTransportState();
 
-    // ── СТОП (после initSlots) — центрированный показ ──
-    if (state == SoLyPAudioProcessor::TransportState::Stopped && useCenterY)
+    for (int i = 0; i < N; ++i)
     {
-        for (int i = 0; i < N; ++i)
-        {
-            if (slots[i].text.isEmpty()) continue;
-            float y = (float)slots[i].y;
-            if (y + lh < (float)bounds.getY() || y > (float)bounds.getBottom()) continue;
-            g.setColour(Theme::textOnButton);
-            g.setFont(juce::FontOptions(SettingsManager::fontSize));
-            g.drawText(slots[i].text,
-                juce::Rectangle<float>((float)bounds.getX(), y, (float)bounds.getWidth(), lh),
-                juce::Justification::centred, false);
-        }
-    }
-    // ── PLAY/PAUSE/COUNTDOWN: Y из scrollOffset ──
-    else
-    {
-        for (int i = 0; i < N; ++i)
-        {
-            if (slots[i].text.isEmpty()) continue;
+        if (slots[i].text.isEmpty()) continue;
 
-            float y;
-            if (state == SoLyPAudioProcessor::TransportState::Paused && i >= N - pre)
-                y = getSlotY(i, 0.0f);
-            else
-                y = getSlotY(i, 0.0f) - (float)(scrollOffset * lh);
+        float y;
+        if (state == SoLyPAudioProcessor::TransportState::Paused && i >= N - pre)
+            y = getSlotY(i, 0.0f);
+        else
+            y = getSlotY(i, 0.0f) - (float)(scrollOffset * lh);
 
-            if (y + lh < (float)bounds.getY() || y > (float)bounds.getBottom()) continue;
+        if (y + lh < (float)bounds.getY() || y > (float)bounds.getBottom()) continue;
 
-            g.setColour(Theme::textOnButton);
-            g.setFont(juce::FontOptions(SettingsManager::fontSize));
-            g.drawText(slots[i].text,
-                juce::Rectangle<float>((float)bounds.getX(), y, (float)bounds.getWidth(), lh),
-                juce::Justification::centred, false);
-        }
+        g.setColour(Theme::textOnButton);
+        g.setFont(juce::FontOptions(SettingsManager::fontSize));
+        g.drawText(slots[i].text,
+            juce::Rectangle<float>((float)bounds.getX(), y, (float)bounds.getWidth(), lh),
+            juce::Justification::centred, false);
     }
 }
 
+// оверлей паузы: "ПАУЗА" золотым — движется снизу вверх, замирает наверху
 void SoLyPAudioProcessorEditor::paintPauseText(juce::Graphics& g)
 {
     auto state = processor.getTransportState();
@@ -226,6 +240,7 @@ void SoLyPAudioProcessorEditor::paintPauseText(juce::Graphics& g)
     }
 }
 
+// статус-бар: название песни, секция, состояние, MIDI-нота, версия
 void SoLyPAudioProcessorEditor::paintStatusBar(juce::Graphics& g)
 {
     const auto& song = processor.getCurrentSong();
@@ -249,8 +264,16 @@ void SoLyPAudioProcessorEditor::paintStatusBar(juce::Graphics& g)
 
     if (cs >= 0)
     {
-        leftInfo += I18n::get("status.section") + " " + secName
-            + "  |  " + (state == SoLyPAudioProcessor::TransportState::Playing
+        leftInfo += I18n::get("status.section") + " " + secName;
+
+        // BPM
+        double bpm = SettingsManager::manualBpmEnabled
+            ? (double)SettingsManager::manualBpmValue
+            : processor.getCurrentBpm();
+        if (bpm > 0.0)
+            leftInfo += "  |  " + juce::String((int)bpm) + " bpm";
+
+        leftInfo += "  |  " + (state == SoLyPAudioProcessor::TransportState::Playing
                 ? I18n::get("status.playing")
                 : state == SoLyPAudioProcessor::TransportState::Paused
                 ? I18n::get("status.paused")
@@ -275,6 +298,7 @@ void SoLyPAudioProcessorEditor::paintStatusBar(juce::Graphics& g)
     g.drawText("v" + juce::String(SOLYP_VERSION), getLocalBounds().reduced(10, 5), juce::Justification::bottomRight);
 }
 
+// оверлей обратного отсчёта: цифра 3-2-1 + прогресс-бар на ширину текста
 void SoLyPAudioProcessorEditor::paintCountdown(juce::Graphics& g)
 {
     if (countdownPhase <= 0 || countdownPhase > 3) return;
@@ -304,6 +328,7 @@ void SoLyPAudioProcessorEditor::paintCountdown(juce::Graphics& g)
     g.fillRect((float)barX, (float)barY, (float)(progress * barW), (float)barH);
 }
 
+// оверлей ошибки: сообщение внизу экрана
 void SoLyPAudioProcessorEditor::paintError(juce::Graphics& g)
 {
     g.setColour(Theme::textError);
@@ -311,6 +336,7 @@ void SoLyPAudioProcessorEditor::paintError(juce::Graphics& g)
     g.drawText(lastError, getLocalBounds().removeFromBottom(60), juce::Justification::centred);
 }
 
+// сохранение: текст редактора → Song::fromText → toJson → файл
 void SoLyPAudioProcessorEditor::doSave(const juce::String& name, const juce::String& title)
 {
     auto text = textEditor->getText();
@@ -365,6 +391,7 @@ void SoLyPAudioProcessorEditor::doSave(const juce::String& name, const juce::Str
     exitEditMode();
 }
 
+// диалог загрузки песни из .json
 void SoLyPAudioProcessorEditor::loadSongFromFile()
 {
     auto dir = juce::File(getDefaultSongDir());
@@ -379,6 +406,7 @@ void SoLyPAudioProcessorEditor::loadSongFromFile()
             if (!file.existsAsFile()) return;
             auto jsonText = file.loadFileAsString();
             Song song = Song::fromJson(jsonText);
+            { auto b = getLocalBounds().reduced(40, 20); song.rebuildDisplayLines((float)b.getWidth(), SettingsManager::fontSize); }
             if (!song.validationError.isEmpty()) { lastError = song.validationError; repaint(); return; }
 
             if (textModified)
@@ -405,6 +433,7 @@ void SoLyPAudioProcessorEditor::loadSongFromFile()
         });
 }
 
+// завершение загрузки: заголовок, loadSong, обновить редактор если открыт
 void SoLyPAudioProcessorEditor::applySongLoad(Song& song, const juce::File& file)
 {
     if (song.fileTitle.isEmpty())
@@ -417,6 +446,7 @@ void SoLyPAudioProcessorEditor::applySongLoad(Song& song, const juce::File& file
         textEditor->setText(songToText(song), juce::dontSendNotification);
 }
 
+// максимальное количество строк, которое влезает в окно при заданном шрифте
 int calcFittingLines(int height, float fontSize, const Song& song)
 {
     float lineHeight = fontSize * 1.4f;

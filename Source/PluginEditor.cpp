@@ -344,9 +344,12 @@ void SoLyPAudioProcessorEditor::paint(juce::Graphics& g)
     g.fillAll(Theme::bgMain);
     if (settingsMode || editMode) return;
     ensureReady();
-    paintLines(g);
-    paintPauseText(g);
     auto state = processor.getTransportState();
+    if (useCenterY && state == SoLyPAudioProcessor::TransportState::Stopped)
+        initPaint(g);
+    else
+        paintScroll(g);
+    paintPauseText(g);
     if (state == SoLyPAudioProcessor::TransportState::Countdown) paintCountdown(g);
     paintStatusBar(g);
     if (!lastError.isEmpty()) paintError(g);
@@ -440,7 +443,11 @@ void SoLyPAudioProcessorEditor::enterEditMode(bool blank)
 void SoLyPAudioProcessorEditor::exitEditMode()
 {
     editMode = false;
-    if (textModified) processor.loadSong(Song::fromText(textEditor->getText()));
+    if (textModified) {
+        Song song = Song::fromText(textEditor->getText());
+        { auto b = getLocalBounds().reduced(40, 20); song.rebuildDisplayLines((float)b.getWidth(), SettingsManager::fontSize); }
+        processor.loadSong(song);
+    }
     if (leftPanel) leftPanel->setVisible(true);
     if (controlsPanel) controlsPanel->setVisible(true);
     textEditor->setVisible(false);
@@ -459,7 +466,11 @@ void SoLyPAudioProcessorEditor::enterSettingsMode()
     settingsMode = true;
     if (editMode) {
         editMode = false;
-        if (textModified) processor.loadSong(Song::fromText(textEditor->getText()));
+    if (textModified) {
+        Song song = Song::fromText(textEditor->getText());
+        { auto b = getLocalBounds().reduced(40, 20); song.rebuildDisplayLines((float)b.getWidth(), SettingsManager::fontSize); }
+        processor.loadSong(song);
+    }
         textEditor->setVisible(false);
         saveButton.setVisible(false);
         backButton.setVisible(false);

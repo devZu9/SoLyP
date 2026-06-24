@@ -35,7 +35,8 @@ private:
     void buttonClicked(juce::Button*) override;
     void sliderValueChanged(juce::Slider*) override;
 
-    void paintLines(juce::Graphics& g);
+    void initPaint(juce::Graphics& g);
+    void paintScroll(juce::Graphics& g);
     void paintPauseText(juce::Graphics& g);
     void paintStatusBar(juce::Graphics& g);
     void paintCountdown(juce::Graphics& g);
