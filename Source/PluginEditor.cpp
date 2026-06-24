@@ -12,8 +12,6 @@ namespace
     void ensureSongsDir()
     {
         juce::File(getDefaultSongDir()).createDirectory();
-
-        // clean leftover temp files from JUCE atomic writes
         auto parent = juce::File(getDefaultSongDir()).getParentDirectory();
         for (auto& f : parent.findChildFiles(juce::File::findFiles, false, "*.tmp"))
             f.deleteFile();
@@ -23,7 +21,6 @@ namespace
 SoLyPAudioProcessorEditor::SoLyPAudioProcessorEditor(SoLyPAudioProcessor& p)
     : AudioProcessorEditor(&p), processor(p)
 {
-    // single instance
     {
         static juce::InterProcessLock lock("SoLyP_SingleInstance");
         if (!lock.enter(100))
@@ -38,33 +35,26 @@ SoLyPAudioProcessorEditor::SoLyPAudioProcessorEditor(SoLyPAudioProcessor& p)
         }
     }
 
-    // load theme first — all Theme:: colours must be set before any widget is created
     auto themeDir = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory)
         .getChildFile("SoLyP").getChildFile("themes");
     Theme::loadFromFile(themeDir.getChildFile("dark.json"));
 
-    // load settings once, apply language
     SettingsManager::load();
     I18n::setLanguage(SettingsManager::language);
-
     ensureSongsDir();
 
     setSize(800, 500);
     setResizable(true, false);
     setConstrainer(nullptr);
 
-    // apply saved window size
     if (SettingsManager::windowWidth > 0 && SettingsManager::windowHeight > 0)
         setSize(SettingsManager::windowWidth, SettingsManager::windowHeight);
 
-    // defer: restore position, register listener, allow saves
     juce::MessageManager::callAsync([this] {
         if (auto* top = getTopLevelComponent())
         {
             top->addComponentListener(this);
-
             top->setAlwaysOnTop(SettingsManager::alwaysOnTop);
-
             if (processor.wrapperType == juce::AudioProcessor::wrapperType_Standalone)
             {
                 if (SettingsManager::windowX != 0 || SettingsManager::windowY != 0)
@@ -76,9 +66,9 @@ SoLyPAudioProcessorEditor::SoLyPAudioProcessorEditor(SoLyPAudioProcessor& p)
 
     setMouseClickGrabsKeyboardFocus(false);
     setWantsKeyboardFocus(true);
-    startTimerHz(20);
 
-    // load cursor SVGs
+    lastScrollTime = juce::Time::getMillisecondCounterHiRes();
+
     {
         auto triXml = juce::XmlDocument::parse(juce::String(Icons::cursorTriangle));
         auto sqXml  = juce::XmlDocument::parse(juce::String(Icons::cursorSquare));
@@ -86,7 +76,6 @@ SoLyPAudioProcessorEditor::SoLyPAudioProcessorEditor(SoLyPAudioProcessor& p)
         if (sqXml)  cursorSq  = juce::Drawable::createFromSVG(*sqXml);
     }
 
-    // edit mode widgets
     textEditor = std::make_unique<juce::TextEditor>();
     textEditor->setMultiLine(true, true);
     textEditor->setReturnKeyStartsNewLine(true);
@@ -102,7 +91,6 @@ SoLyPAudioProcessorEditor::SoLyPAudioProcessorEditor(SoLyPAudioProcessor& p)
     textEditor->onTextChange = [this] { if (editMode) { textModified = true; pendingChanges = true; } };
     addAndMakeVisible(textEditor.get());
 
-    // settings button in editor (gear icon)
     auto gearSvg = juce::String(Icons::gear).replace("#000000", "#" + Theme::iconPrimary.toDisplayString(false));
     auto gearHoverSvg = juce::String(Icons::gear).replace("#000000", "#" + Theme::iconHover.toDisplayString(false));
     auto gearXml = juce::XmlDocument::parse(gearSvg);
@@ -119,7 +107,6 @@ SoLyPAudioProcessorEditor::SoLyPAudioProcessorEditor(SoLyPAudioProcessor& p)
     settingsEditBtn.addListener(this);
     settingsEditBtn.setTooltip(I18n::get("settings.go"));
 
-    // edit mode icon buttons
     auto setupIconBtn = [&](juce::DrawableButton& btn, const char* svgData, const juce::String& tooltip) {
         auto svg = juce::String(svgData).replace("#000000", "#" + Theme::iconPrimary.toDisplayString(false));
         auto hoverSvg = juce::String(svgData).replace("#000000", "#" + Theme::iconHover.toDisplayString(false));
@@ -144,7 +131,6 @@ SoLyPAudioProcessorEditor::SoLyPAudioProcessorEditor(SoLyPAudioProcessor& p)
     setupIconBtn(saveButton, Icons::uploadSimpleFill, I18n::get("button.save"));
     addAndMakeVisible(settingsEditBtn);
 
-    // left panel
     leftPanel = std::make_unique<LeftPanel>();
     leftPanel->loadButton.addListener(this);
     leftPanel->newButton.addListener(this);
@@ -153,7 +139,6 @@ SoLyPAudioProcessorEditor::SoLyPAudioProcessorEditor(SoLyPAudioProcessor& p)
     leftPanel->setBounds(8, 8, leftPanel->getRequiredWidth(), LeftPanel::compHeight);
     addAndMakeVisible(leftPanel.get());
 
-    // controls panel
     controlsPanel = std::make_unique<ControlsPanel>();
     controlsPanel->linesSlider.addListener(this);
     controlsPanel->fontSizeSlider.addListener(this);
@@ -161,12 +146,83 @@ SoLyPAudioProcessorEditor::SoLyPAudioProcessorEditor(SoLyPAudioProcessor& p)
                              ControlsPanel::compWidth, ControlsPanel::compHeight);
     addAndMakeVisible(controlsPanel.get());
 
-    // apply initial slider values from SettingsManager
     controlsPanel->linesSlider.setValue((double)SettingsManager::visibleLines, juce::dontSendNotification);
     controlsPanel->fontSizeSlider.setValue((double)SettingsManager::fontSize, juce::dontSendNotification);
 
-    processor.onStateChanged = [this]() { repaint(); };
+    stateChangeQueued = false;
+    processor.onStateChanged = [this]() {
+        if (!stateChangeQueued.exchange(true))
+        {
+            juce::MessageManager::callAsync([this]() {
+                stateChangeQueued = false;
+                auto state = processor.getTransportState();
+                switch (state)
+                {
+                case SoLyPAudioProcessor::TransportState::Stopped:
+                    stopTimer(ScrollId);
+                    stopTimer(PauseMsgId);
+                    stopTimer(CountdownId);
+                    if (slots.empty())
+                        initSlots();
+                    break;
+                case SoLyPAudioProcessor::TransportState::Playing:
+                    showPauseText = false;
+                    lastScrollTime = juce::Time::getMillisecondCounterHiRes();
+                    if (lastState == SoLyPAudioProcessor::TransportState::Stopped && slots.empty())
+                        initSlots();
+                    startTimer(ScrollId, 50);
+                    stopTimer(PauseMsgId);
+                    break;
+                case SoLyPAudioProcessor::TransportState::Paused:
+                    showPauseText = true;
+                    pauseMsgY = 0.0;
+                    lastScrollTime = juce::Time::getMillisecondCounterHiRes();
+                    startTimer(ScrollId, 50);
+                    startTimer(PauseMsgId, 50);
+                    stopTimer(CountdownId);
+                    break;
+                case SoLyPAudioProcessor::TransportState::Countdown:
+                {
+                    double bpm = SettingsManager::manualBpmEnabled
+                        ? (double)SettingsManager::manualBpmValue
+                        : processor.getCurrentBpm();
+                    if (bpm <= 0.0) bpm = 120.0;
+                    countdownPhaseDuration = 0.5 * (60000.0 / bpm * (double)SettingsManager::timeSignature);
+                    countdownPhase = 1;
+                    countdownPhaseStart = juce::Time::getMillisecondCounterHiRes();
+                    startTimer(CountdownId, 50);
+                    break;
+                }
+                }
+                int st = processor.getSectionTarget();
+                if (st >= 0) {
+                    const auto& song = processor.getCurrentSong();
+                    int idx = findSectionStart(song, st);
+                    if (idx >= 0) {
+                        nextLineIndex = idx;
+                        setupPreLines();
+                    }
+                    processor.clearSectionTarget();
+                } else if (st == -2) {
+                    const auto& song = processor.getCurrentSong();
+                    int curSid = 0;
+                    if (nextLineIndex > 0 && nextLineIndex - 1 < song.displayLines.size())
+                        curSid = song.displayLines[nextLineIndex - 1].sectionId;
+                    int idx = findSectionStart(song, curSid + 1);
+                    if (idx >= 0) {
+                        nextLineIndex = idx;
+                        setupPreLines();
+                    }
+                    processor.clearSectionTarget();
+                }
+                lastState = state;
+                repaint();
+            });
+        }
+    };
 
+    if (SettingsManager::cursorEnabled)
+        startTimer(CursorId, 16);
 }
 
 SoLyPAudioProcessorEditor::~SoLyPAudioProcessorEditor()
@@ -174,6 +230,88 @@ SoLyPAudioProcessorEditor::~SoLyPAudioProcessorEditor()
     processor.onStateChanged = nullptr;
     if (auto* top = getTopLevelComponent())
         top->removeComponentListener(this);
+}
+
+void SoLyPAudioProcessorEditor::timerCallback(int timerId)
+{
+    auto state = processor.getTransportState();
+    if (timerId == ScrollId && (state == SoLyPAudioProcessor::TransportState::Playing
+        || state == SoLyPAudioProcessor::TransportState::Paused
+        || state == SoLyPAudioProcessor::TransportState::Countdown))
+    {
+        double now = juce::Time::getMillisecondCounterHiRes();
+        double elapsed = now - lastScrollTime;
+        lastScrollTime = now;
+        double timePerLine = getTimePerLine();
+        if (timePerLine <= 0.0 || slots.empty()) { repaint(); return; }
+        double step = elapsed / (timePerLine * 1000.0);
+        if (state == SoLyPAudioProcessor::TransportState::Paused) step *= 5.0;
+        if (state == SoLyPAudioProcessor::TransportState::Countdown && countdownPhase > 0) step *= 5.0;
+        scrollOffset += step;
+        int N = (int)slots.size();
+        if (state == SoLyPAudioProcessor::TransportState::Playing
+            || state == SoLyPAudioProcessor::TransportState::Countdown)
+        {
+            while (scrollOffset >= 1.0)
+            {
+                scrollOffset -= 1.0;
+                const auto& song = processor.getCurrentSong();
+                if (song.displayLines.isEmpty()) { repaint(); return; }
+                for (int i = 0; i < N - 1; ++i)
+                    slots[i].text = slots[i + 1].text;
+                if (nextLineIndex < song.displayLines.size())
+                    slots[N - 1].text = song.displayLines[nextLineIndex++].text;
+                else
+                    processor.enterStop();
+            }
+        }
+        if (state == SoLyPAudioProcessor::TransportState::Paused && showPauseText)
+        {
+            double lh = SettingsManager::fontSize * 1.4f;
+            pauseMsgY -= step * lh;
+        }
+        repaint();
+        return;
+    }
+    if (timerId == PauseMsgId)
+    {
+        if (state != SoLyPAudioProcessor::TransportState::Paused) stopTimer(PauseMsgId);
+        return;
+    }
+    if (timerId == CountdownId)
+    {
+        double now = juce::Time::getMillisecondCounterHiRes();
+        double elapsed = now - countdownPhaseStart;
+        if (elapsed >= countdownPhaseDuration)
+        {
+            countdownPhase++;
+            if (countdownPhase > 3)
+            {
+                countdownPhase = 0;
+                stopTimer(CountdownId);
+                stopTimer(ScrollId);
+                stopTimer(PauseMsgId);
+                processor.enterPlay();
+                return;
+            }
+            countdownPhaseStart = now;
+        }
+        repaint();
+        return;
+    }
+    if (timerId == CursorId)
+    {
+        if (!SettingsManager::cursorEnabled) { stopTimer(CursorId); return; }
+        auto screenPos = juce::Desktop::getInstance().getMousePosition();
+        mousePos = getLocalPoint(nullptr, screenPos);
+        cursorAngle -= 0.005f * powf(1.3f, (float)(SettingsManager::cursorRotSpeed - 1));
+        if (cursorAngle < 0.0f) cursorAngle += juce::MathConstants<float>::twoPi;
+        int sz = SettingsManager::cursorSize + 4;
+        static juce::Point<int> prevPos;
+        repaint(juce::Rectangle<int>(prevPos.x - sz, prevPos.y - sz, sz * 2, sz * 2));
+        repaint(juce::Rectangle<int>(mousePos.x - sz, mousePos.y - sz, sz * 2, sz * 2));
+        prevPos = mousePos;
+    }
 }
 
 void SoLyPAudioProcessorEditor::componentMovedOrResized(
@@ -188,193 +326,48 @@ void SoLyPAudioProcessorEditor::componentMovedOrResized(
         SettingsManager::windowY = pos.y;
         SettingsManager::save();
     }
-    return;
 }
 
-bool SoLyPAudioProcessorEditor::keyPressed(const juce::KeyPress&)
-{
-    return false;
-}
-
-void SoLyPAudioProcessorEditor::timerCallback()
-{
-    auto state = processor.getTransportState();
-    if (state == SoLyPAudioProcessor::TransportState::Playing
-        || state == SoLyPAudioProcessor::TransportState::Paused
-        || state == SoLyPAudioProcessor::TransportState::Countdown)
-    {
-        processor.timerTick();
-        repaint();
-    }
-
-    if (!SettingsManager::cursorEnabled) return;
-
-    auto screenPos = juce::Desktop::getInstance().getMousePosition();
-    mousePos = getLocalPoint(nullptr, screenPos);
-
-    cursorAngle -= 0.005f * powf(1.3f, (float)(SettingsManager::cursorRotSpeed - 1));
-    if (cursorAngle < 0.0f) cursorAngle += juce::MathConstants<float>::twoPi;
-
-    int sz = SettingsManager::cursorSize + 4;
-    static juce::Point<int> prevPos;
-    repaint(juce::Rectangle<int>(prevPos.x - sz, prevPos.y - sz, sz * 2, sz * 2));
-    repaint(juce::Rectangle<int>(mousePos.x - sz, mousePos.y - sz, sz * 2, sz * 2));
-    prevPos = mousePos;
-}
+bool SoLyPAudioProcessorEditor::keyPressed(const juce::KeyPress&) { return false; }
 
 void SoLyPAudioProcessorEditor::mouseMove(const juce::MouseEvent& e)
 {
     if (editMode) return;
     mousePos = e.getPosition();
 }
+
 void SoLyPAudioProcessorEditor::mouseExit(const juce::MouseEvent&) {}
 
-void SoLyPAudioProcessorEditor::buttonClicked(juce::Button* btn)
-{
-    if (btn == &saveButton)
-        showSaveDialog();
-    else if (btn == &backButton)
-    {
-        if (settingsMode)
-            exitSettingsMode();
-        else
-            exitEditMode();
-    }
-    else if (btn == &editModeLoadButton)
-        loadSongFromFile();
-    else if (btn == &editModeNewButton)
-    {
-        if (textModified)
-        {
-            auto* alert = new juce::AlertWindow(I18n::get("confirm.unsaved"),
-                I18n::get("confirm.newText"), juce::AlertWindow::QuestionIcon);
-            alert->setColour(juce::AlertWindow::backgroundColourId, Theme::bgPanel);
-            alert->setColour(juce::AlertWindow::textColourId, Theme::textPrimary);
-            alert->setColour(juce::AlertWindow::outlineColourId, Theme::accentBorder);
-            alert->addButton("OK", 1, juce::KeyPress(juce::KeyPress::returnKey));
-            alert->addButton(juce::String::fromUTF8("Отмена"), 0, juce::KeyPress(juce::KeyPress::escapeKey));
-            alert->enterModalState(true, juce::ModalCallbackFunction::create([this, alert](int r) {
-                if (r == 1) textEditor->setText(I18n::get("editor.placeholder"));
-                delete alert;
-            }));
-        }
-        else
-            textEditor->setText(I18n::get("editor.placeholder"));
-    }
-    else if (btn == &leftPanel->editButton)
-    {
-        leftPanel->setHovered(false);
-        enterEditMode();
-    }
-    else if (btn == &leftPanel->loadButton)
-    {
-        leftPanel->setHovered(false);
-        loadSongFromFile();
-    }
-    else if (btn == &leftPanel->newButton)
-    {
-        leftPanel->setHovered(false);
-        if (textModified)
-        {
-            auto* alert = new juce::AlertWindow(I18n::get("confirm.unsaved"),
-                I18n::get("confirm.newText"), juce::AlertWindow::QuestionIcon);
-            alert->setColour(juce::AlertWindow::backgroundColourId, Theme::bgPanel);
-            alert->setColour(juce::AlertWindow::textColourId, Theme::textPrimary);
-            alert->setColour(juce::AlertWindow::outlineColourId, Theme::accentBorder);
-            alert->addButton("OK", 1, juce::KeyPress(juce::KeyPress::returnKey));
-            alert->addButton(juce::String::fromUTF8("Отмена"), 0, juce::KeyPress(juce::KeyPress::escapeKey));
-            alert->enterModalState(true, juce::ModalCallbackFunction::create([this, alert](int r) {
-                if (r == 1) enterEditMode(true);
-                delete alert;
-            }));
-        }
-        else
-            enterEditMode(true);
-    }
-    else if (btn == &leftPanel->settingsBtn)
-    {
-        leftPanel->setHovered(false);
-        enterSettingsMode();
-    }
-    else if (btn == &settingsEditBtn)
-    {
-        enterSettingsMode();
-    }
-}
-
-void SoLyPAudioProcessorEditor::sliderValueChanged(juce::Slider* slider)
-{
-    if (controlsPanel != nullptr)
-    {
-        if (slider == &controlsPanel->linesSlider)
-            SettingsManager::visibleLines = static_cast<int>(controlsPanel->linesSlider.getValue());
-        else if (slider == &controlsPanel->fontSizeSlider)
-        {
-            SettingsManager::fontSize = static_cast<float>(controlsPanel->fontSizeSlider.getValue());
-            updateLineCount();
-            SettingsManager::visibleLines = static_cast<int>(controlsPanel->linesSlider.getValue());
-        }
-    }
-
-    SettingsManager::save();
-    repaint();
-}
-
-// ── paint ───────────────────────────────────────────────────────────────────
-
+// отрисовка: каждая функция = один элемент
 void SoLyPAudioProcessorEditor::paint(juce::Graphics& g)
 {
     g.fillAll(Theme::bgMain);
-
-    if (settingsMode || editMode)
-        return;
-
+    if (settingsMode || editMode) return;
+    ensureReady();
+    paintLines(g);
+    paintPauseText(g);
     auto state = processor.getTransportState();
-
-    if (processor.isPauseLineActive()
-        || state == SoLyPAudioProcessor::TransportState::Paused
-        || state == SoLyPAudioProcessor::TransportState::Countdown)
-    {
-        paintPausedLyrics(g);
-    }
-    else
-    {
-        paintLyrics(g);
-    }
-
-    if (state == SoLyPAudioProcessor::TransportState::Countdown)
-        paintCountdown(g);
-
-    if (!lastError.isEmpty())
-        paintError(g);
+    if (state == SoLyPAudioProcessor::TransportState::Countdown) paintCountdown(g);
+    paintStatusBar(g);
+    if (!lastError.isEmpty()) paintError(g);
 }
 
-void SoLyPAudioProcessorEditor::paintOverChildren(juce::Graphics& g)
-{
-    paintCursor(g);
-}
-
-// ── resized ─────────────────────────────────────────────────────────────────
+void SoLyPAudioProcessorEditor::paintOverChildren(juce::Graphics& g) { paintCursor(g); }
 
 void SoLyPAudioProcessorEditor::resized()
 {
-    if (settingsMode)
-    {
+    if (settingsMode) {
         auto area = getLocalBounds().reduced(10);
         auto buttonBar = area.removeFromTop(40);
         int gs = 28;
         backButton.setBounds(buttonBar.removeFromLeft(gs).withSizeKeepingCentre(gs, gs));
-        if (settingsComponent != nullptr)
-            settingsComponent->setBounds(area);
+        if (settingsComponent) settingsComponent->setBounds(area);
         return;
     }
-
-    if (editMode)
-    {
+    if (editMode) {
         auto area = getLocalBounds().reduced(10);
         auto buttonBar = area.removeFromTop(40);
-        int gs = 28;
-        int gap = 8;
+        int gs = 28, gap = 8;
         backButton.setBounds(buttonBar.removeFromLeft(gs).withSizeKeepingCentre(gs, gs));
         buttonBar.removeFromLeft(gap);
         editModeLoadButton.setBounds(buttonBar.removeFromLeft(gs).withSizeKeepingCentre(gs, gs));
@@ -382,41 +375,53 @@ void SoLyPAudioProcessorEditor::resized()
         editModeNewButton.setBounds(buttonBar.removeFromLeft(gs).withSizeKeepingCentre(gs, gs));
         buttonBar.removeFromLeft(gap);
         saveButton.setBounds(buttonBar.removeFromLeft(gs).withSizeKeepingCentre(gs, gs));
-        settingsEditBtn.setBounds(buttonBar.getRight() - gs - 4,
-                                  buttonBar.getY() + (buttonBar.getHeight() - gs) / 2,
-                                  gs, gs);
+        settingsEditBtn.setBounds(buttonBar.getRight() - gs - 4, buttonBar.getY() + (buttonBar.getHeight() - gs) / 2, gs, gs);
         textEditor->setBounds(area);
         return;
     }
-
     repaint();
-
-    if (leftPanel != nullptr)
-        leftPanel->setBounds(8, 8, leftPanel->getRequiredWidth(), LeftPanel::compHeight);
-
-    if (controlsPanel != nullptr)
-        controlsPanel->setBounds(getWidth() - ControlsPanel::compWidth - 8, 8,
-                                 ControlsPanel::compWidth, ControlsPanel::compHeight);
-
+    if (leftPanel) leftPanel->setBounds(8, 8, leftPanel->getRequiredWidth(), LeftPanel::compHeight);
+    if (controlsPanel) controlsPanel->setBounds(getWidth() - ControlsPanel::compWidth - 8, 8, ControlsPanel::compWidth, ControlsPanel::compHeight);
     updateLineCount();
-
     repaint();
 }
 
-void SoLyPAudioProcessorEditor::mouseDown(const juce::MouseEvent&)
+void SoLyPAudioProcessorEditor::mouseDown(const juce::MouseEvent&) {}
+
+void SoLyPAudioProcessorEditor::buttonClicked(juce::Button* btn)
 {
+    if (btn == &saveButton) { showSaveDialog(); return; }
+    if (btn == &backButton) { if (settingsMode) exitSettingsMode(); else exitEditMode(); return; }
+    if (btn == &editModeLoadButton) { loadSongFromFile(); return; }
+    if (btn == &editModeNewButton) { enterEditMode(true); return; }
+    if (btn == &leftPanel->editButton) { leftPanel->setHovered(false); enterEditMode(); return; }
+    if (btn == &leftPanel->loadButton) { leftPanel->setHovered(false); loadSongFromFile(); return; }
+    if (btn == &leftPanel->newButton) { leftPanel->setHovered(false); enterEditMode(true); return; }
+    if (btn == &leftPanel->settingsBtn) { leftPanel->setHovered(false); enterSettingsMode(); return; }
+    if (btn == &settingsEditBtn) { enterSettingsMode(); return; }
 }
 
-// ── edit mode ───────────────────────────────────────────────────────────────
+void SoLyPAudioProcessorEditor::sliderValueChanged(juce::Slider* slider)
+{
+    if (controlsPanel) {
+        if (slider == &controlsPanel->linesSlider)
+            SettingsManager::visibleLines = static_cast<int>(controlsPanel->linesSlider.getValue());
+        else if (slider == &controlsPanel->fontSizeSlider) {
+            SettingsManager::fontSize = static_cast<float>(controlsPanel->fontSizeSlider.getValue());
+            updateLineCount();
+            SettingsManager::visibleLines = static_cast<int>(controlsPanel->linesSlider.getValue());
+        }
+    }
+    SettingsManager::save();
+    repaint();
+}
 
 void SoLyPAudioProcessorEditor::enterEditMode(bool blank)
 {
     editMode = true;
-    if (leftPanel != nullptr) leftPanel->setVisible(false);
-    if (controlsPanel != nullptr) controlsPanel->setVisible(false);
-
+    if (leftPanel) leftPanel->setVisible(false);
+    if (controlsPanel) controlsPanel->setVisible(false);
     const auto& song = processor.getCurrentSong();
-
     textEditor->setVisible(true);
     saveButton.setVisible(true);
     backButton.setVisible(true);
@@ -424,12 +429,10 @@ void SoLyPAudioProcessorEditor::enterEditMode(bool blank)
     editModeNewButton.setVisible(true);
     settingsEditBtn.setVisible(true);
     resized();
-
-    if (blank || song.sections.isEmpty())
+    if (blank || song.textSong.isEmpty())
         textEditor->setText(I18n::get("editor.placeholder"), juce::dontSendNotification);
     else if (!pendingChanges)
         textEditor->setText(songToText(song), juce::dontSendNotification);
-
     textEditor->grabKeyboardFocus();
     resetCursorState();
 }
@@ -437,10 +440,9 @@ void SoLyPAudioProcessorEditor::enterEditMode(bool blank)
 void SoLyPAudioProcessorEditor::exitEditMode()
 {
     editMode = false;
-    if (textModified)
-        processor.loadSong(Song::fromText(textEditor->getText()));
-    if (leftPanel != nullptr) leftPanel->setVisible(true);
-    if (controlsPanel != nullptr) controlsPanel->setVisible(true);
+    if (textModified) processor.loadSong(Song::fromText(textEditor->getText()));
+    if (leftPanel) leftPanel->setVisible(true);
+    if (controlsPanel) controlsPanel->setVisible(true);
     textEditor->setVisible(false);
     saveButton.setVisible(false);
     backButton.setVisible(false);
@@ -452,33 +454,23 @@ void SoLyPAudioProcessorEditor::exitEditMode()
     resetCursorState();
 }
 
-// ── settings mode ───────────────────────────────────────────────────────────
-
 void SoLyPAudioProcessorEditor::enterSettingsMode()
 {
     settingsMode = true;
-
-    if (editMode)
-    {
+    if (editMode) {
         editMode = false;
-        if (textModified)
-            processor.loadSong(Song::fromText(textEditor->getText()));
+        if (textModified) processor.loadSong(Song::fromText(textEditor->getText()));
         textEditor->setVisible(false);
         saveButton.setVisible(false);
         backButton.setVisible(false);
         editModeLoadButton.setVisible(false);
         editModeNewButton.setVisible(false);
         settingsEditBtn.setVisible(false);
+    } else {
+        if (leftPanel) leftPanel->setVisible(false);
+        if (controlsPanel) controlsPanel->setVisible(false);
     }
-    else
-    {
-        if (leftPanel != nullptr) leftPanel->setVisible(false);
-        if (controlsPanel != nullptr) controlsPanel->setVisible(false);
-    }
-
-    // show back button for returning from settings
     backButton.setVisible(true);
-
     settingsComponent = std::make_unique<SettingsComponent>([this] { onLanguageChanged(); });
     addAndMakeVisible(settingsComponent.get());
     resized();
@@ -491,11 +483,9 @@ void SoLyPAudioProcessorEditor::exitSettingsMode()
     settingsMode = false;
     settingsComponent = nullptr;
     backButton.setVisible(false);
-
-    if (leftPanel != nullptr) leftPanel->setVisible(true);
-    if (controlsPanel != nullptr) controlsPanel->setVisible(true);
-    if (auto* top = getTopLevelComponent())
-        top->setAlwaysOnTop(SettingsManager::alwaysOnTop);
+    if (leftPanel) leftPanel->setVisible(true);
+    if (controlsPanel) controlsPanel->setVisible(true);
+    if (auto* top = getTopLevelComponent()) top->setAlwaysOnTop(SettingsManager::alwaysOnTop);
     resized();
     resetCursorState();
 }
@@ -504,160 +494,89 @@ void SoLyPAudioProcessorEditor::onLanguageChanged()
 {
     if (languageChangeGuard) return;
     languageChangeGuard = true;
-
-    if (leftPanel != nullptr)
-        leftPanel->refreshText();
-
+    if (leftPanel) leftPanel->refreshText();
     backButton.setTooltip(I18n::get("button.back"));
     saveButton.setTooltip(I18n::get("button.save"));
     editModeLoadButton.setTooltip(I18n::get("button.load"));
     editModeNewButton.setTooltip(I18n::get("button.new"));
     settingsEditBtn.setTooltip(I18n::get("settings.go"));
-
     repaint();
-
-    auto* alert = new juce::AlertWindow(
-        I18n::get("settings.language"),
-        I18n::get("settings.languageChanged"),
-        juce::AlertWindow::InfoIcon);
+    auto* alert = new juce::AlertWindow(I18n::get("settings.language"),
+        I18n::get("settings.languageChanged"), juce::AlertWindow::InfoIcon);
     alert->setColour(juce::AlertWindow::backgroundColourId, Theme::bgPanel);
     alert->setColour(juce::AlertWindow::textColourId, Theme::textPrimary);
     alert->setColour(juce::AlertWindow::outlineColourId, Theme::accentBorder);
     alert->addButton("OK", 1, juce::KeyPress(juce::KeyPress::returnKey));
     alert->enterModalState(true, juce::ModalCallbackFunction::create([this, alert](int) {
         languageChangeGuard = false;
-        if (settingsMode)
-            exitSettingsMode();
+        if (settingsMode) exitSettingsMode();
         delete alert;
     }));
 }
-
-// ── save dialog ─────────────────────────────────────────────────────────────
 
 void SoLyPAudioProcessorEditor::showSaveDialog()
 {
     lastError = {};
     auto text = textEditor->getText();
-    if (text.trim().isEmpty())
-    {
-        lastError = I18n::get("error.empty");
-        repaint();
-        return;
-    }
-
+    if (text.trim().isEmpty()) { lastError = I18n::get("error.empty"); repaint(); return; }
     Song song = Song::fromText(text);
-    if (!song.validationError.isEmpty())
-    {
-        lastError = song.validationError;
-        repaint();
-        return;
-    }
-
-    if (lastFilename.isEmpty() && !song.sections.isEmpty())
-        lastFilename = juce::File::createLegalFileName(song.sections[0].name);
-
-    auto* dialog = new SaveDialogComponent(
-        lastFilename,
-        lastSongTitle,
-        [this](const juce::String& name, const juce::String& title) {
-            doSave(name, title);
-        },
-        []() {}
-    );
+    if (!song.validationError.isEmpty()) { lastError = song.validationError; repaint(); return; }
+    if (lastFilename.isEmpty() && !song.textSong.isEmpty())
+        lastFilename = juce::File::createLegalFileName(song.textSong[0].sectionName);
+    auto* dialog = new SaveDialogComponent(lastFilename, lastSongTitle,
+        [this](const juce::String& name, const juce::String& title) { doSave(name, title); },
+        []() {});
     addAndMakeVisible(dialog);
     dialog->setBounds(getLocalBounds());
-    if (SettingsManager::cursorEnabled)
-        dialog->setMouseCursor(juce::MouseCursor::NoCursor);
+    if (SettingsManager::cursorEnabled) dialog->setMouseCursor(juce::MouseCursor::NoCursor);
     dialog->activateModal([this, dialog] {
-        juce::MessageManager::callAsync([this, dialog] {
-            removeChildComponent(dialog);
-            delete dialog;
-        });
+        juce::MessageManager::callAsync([this, dialog] { removeChildComponent(dialog); delete dialog; });
     });
 }
 
 void SoLyPAudioProcessorEditor::paintCursor(juce::Graphics& g)
 {
     bool curEnabled = SettingsManager::cursorEnabled;
-
-    if (curEnabled != lastCursorEnabled)
-    {
+    if (curEnabled != lastCursorEnabled) {
         lastCursorEnabled = curEnabled;
-
         std::function<void(juce::Component*)> applyCursor;
         applyCursor = [&](juce::Component* c) {
-            if (dynamic_cast<juce::TextEditor*>(c) != nullptr)
-                return;
-            c->setMouseCursor(curEnabled ? juce::MouseCursor::NoCursor
-                                         : juce::MouseCursor::NormalCursor);
-            for (auto* child : c->getChildren())
-                applyCursor(child);
+            if (dynamic_cast<juce::TextEditor*>(c) != nullptr) return;
+            c->setMouseCursor(curEnabled ? juce::MouseCursor::NoCursor : juce::MouseCursor::NormalCursor);
+            for (auto* child : c->getChildren()) applyCursor(child);
         };
         applyCursor(this);
-
-        // force NoCursor on dialogs/alerts (including their TextEditor fields)
         if (curEnabled)
-        {
             for (auto* child : getChildren())
-            {
-                if (dynamic_cast<SaveDialogComponent*>(child) != nullptr
-                    || dynamic_cast<juce::AlertWindow*>(child) != nullptr)
-                {
-                    std::function<void(juce::Component*)> setDialog;
-                    setDialog = [&](juce::Component* c) {
-                        c->setMouseCursor(juce::MouseCursor::NoCursor);
-                        for (auto* gc : c->getChildren())
-                            setDialog(gc);
-                    };
-                    setDialog(child);
-                }
-            }
-        }
+                if (dynamic_cast<SaveDialogComponent*>(child) || dynamic_cast<juce::AlertWindow*>(child))
+                    applyCursor(child);
     }
-
     if (!curEnabled) return;
-
-    // don't draw over text editor
     {
         bool hasDialog = false;
         for (auto* child : getChildren())
-            if (dynamic_cast<SaveDialogComponent*>(child) != nullptr
-                || dynamic_cast<juce::AlertWindow*>(child) != nullptr)
-                { hasDialog = true; break; }
-
+            if (dynamic_cast<SaveDialogComponent*>(child) || dynamic_cast<juce::AlertWindow*>(child)) { hasDialog = true; break; }
         if (!hasDialog && textEditor && textEditor->isVisible()
-            && textEditor->getScreenBounds().contains(
-                juce::Desktop::getInstance().getMousePosition()))
+            && textEditor->getScreenBounds().contains(juce::Desktop::getInstance().getMousePosition()))
             return;
     }
-
-    // reload drawables if color changed
-    if (SettingsManager::cursorColor != cssCursorColor || SettingsManager::cursorShape != cssCursorShape)
-    {
+    if (SettingsManager::cursorColor != cssCursorColor || SettingsManager::cursorShape != cssCursorShape) {
         cssCursorColor = SettingsManager::cursorColor;
         cssCursorShape = SettingsManager::cursorShape;
-        auto triXml = juce::XmlDocument::parse(juce::String(Icons::cursorTriangle)
-            .replace("#000", "#" + cssCursorColor));
-        auto sqXml  = juce::XmlDocument::parse(juce::String(Icons::cursorSquare)
-            .replace("#000", "#" + cssCursorColor));
+        auto triXml = juce::XmlDocument::parse(juce::String(Icons::cursorTriangle).replace("#000", "#" + cssCursorColor));
+        auto sqXml  = juce::XmlDocument::parse(juce::String(Icons::cursorSquare).replace("#000", "#" + cssCursorColor));
         if (triXml) cursorTri = juce::Drawable::createFromSVG(*triXml);
         if (sqXml)  cursorSq  = juce::Drawable::createFromSVG(*sqXml);
     }
-
     auto* drawable = (SettingsManager::cursorShape == 0) ? cursorTri.get() : cursorSq.get();
     if (!drawable) return;
-
     auto screenPos = juce::Desktop::getInstance().getMousePosition();
     auto pos = getLocalPoint(nullptr, screenPos);
     if (!getLocalBounds().contains(pos)) return;
-
     float sz = (float)SettingsManager::cursorSize;
     float scale = sz / 100.0f;
-
     float angle = SettingsManager::cursorRotation ? cursorAngle : 0.0f;
-    if (SettingsManager::cursorRotDir == 1)
-        angle = -angle;
-
+    if (SettingsManager::cursorRotDir == 1) angle = -angle;
     g.saveState();
     g.addTransform(juce::AffineTransform::translation((float)pos.x, (float)pos.y));
     g.addTransform(juce::AffineTransform::rotation(angle));
@@ -668,18 +587,13 @@ void SoLyPAudioProcessorEditor::paintCursor(juce::Graphics& g)
     g.restoreState();
 }
 
-void SoLyPAudioProcessorEditor::resetCursorState()
-{
-    lastCursorEnabled = false;
-}
+void SoLyPAudioProcessorEditor::resetCursorState() { lastCursorEnabled = false; }
 
 void SoLyPAudioProcessorEditor::updateLineCount()
 {
-    if (controlsPanel == nullptr) return;
-
+    if (!controlsPanel) return;
     const auto& song = processor.getCurrentSong();
-    if (song.sections.isEmpty()) return;
-
+    if (song.textSong.isEmpty()) return;
     int fitting = calcFittingLines(getHeight(), SettingsManager::fontSize, song);
     int newVal = juce::jmin((int)controlsPanel->linesSlider.getValue(), fitting);
     controlsPanel->linesSlider.setValue((double)newVal, juce::dontSendNotification);

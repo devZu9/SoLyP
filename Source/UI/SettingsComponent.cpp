@@ -188,14 +188,6 @@ SettingsComponent::SettingsComponent(std::function<void()> onLangChanged)
             SettingsManager::save();
         };
 
-        auto* longCb = card->addCombo(I18n::get("settings.longLines"));
-        longCb->addItem(I18n::get("settings.longLinesWrap"), 1);
-        longCb->addItem(I18n::get("settings.longLinesShrink"), 2);
-        longCb->setSelectedId(SettingsManager::longLineBehavior == 1 ? 2 : 1);
-        longCb->onChange = [longCb] {
-            SettingsManager::longLineBehavior = longCb->getSelectedId() - 1;
-            SettingsManager::save();
-        };
         container->addAndMakeVisible(card);
     }
 

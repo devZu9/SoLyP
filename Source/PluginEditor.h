@@ -2,13 +2,14 @@
 
 #include <JuceHeader.h>
 #include "PluginProcessor.h"
+#include "Slot.h"
 #include "UI/ControlsPanel.h"
 #include "UI/LeftPanel.h"
 
 class SettingsComponent;
 
 class SoLyPAudioProcessorEditor : public juce::AudioProcessorEditor,
-                                  private juce::Timer,
+                                  private juce::MultiTimer,
                                   private juce::Button::Listener,
                                   private juce::Slider::Listener,
                                   private juce::ComponentListener
@@ -28,15 +29,20 @@ public:
     bool isTextModified() const { return pendingChanges; }
 
 private:
-    void timerCallback() override;
+    enum TimerId { ScrollId = 1, PauseMsgId = 2, CountdownId = 3, CursorId = 4 };
+
+    void timerCallback(int timerId) override;
     void buttonClicked(juce::Button*) override;
     void sliderValueChanged(juce::Slider*) override;
 
-    void paintLyrics(juce::Graphics& g);
-    void paintPausedLyrics(juce::Graphics& g);
+    void paintLines(juce::Graphics& g);
+    void paintPauseText(juce::Graphics& g);
+    void paintStatusBar(juce::Graphics& g);
     void paintCountdown(juce::Graphics& g);
     void paintError(juce::Graphics& g);
     void paintCursor(juce::Graphics& g);
+    void ensureReady();
+    void initView(juce::Graphics& g);
     void resetCursorState();
     void updateLineCount();
 
@@ -51,8 +57,31 @@ private:
     void exitSettingsMode();
     void onLanguageChanged();
 
+    // slot management
+    void initSlots();
+    void setupPreLines();
+    double getTimePerLine();
+    double getSlotY(int idx, double offset) const;
+
     SoLyPAudioProcessor& processor;
 
+    // slots
+    std::vector<Slot> slots;
+    double scrollOffset = 0.0;
+    int nextLineIndex = 0;
+    double lastScrollTime = 0.0;
+    bool useCenterY = true;
+    SoLyPAudioProcessor::TransportState lastState = SoLyPAudioProcessor::TransportState::Stopped;
+    std::atomic<bool> stateChangeQueued{false};
+
+    // pause
+    bool showPauseText = false;
+    double pauseMsgY = 0.0;
+
+    // countdown
+    int countdownPhase = 0;
+    double countdownPhaseStart = 0.0;
+    double countdownPhaseDuration = 0.0;
 
     juce::String lastError;
 
@@ -69,25 +98,17 @@ private:
     std::unique_ptr<SettingsComponent> settingsComponent;
     juce::DrawableButton settingsEditBtn{ "", juce::DrawableButton::ImageFitted };
 
-    // save dialog data (persisted between invocations)
     juce::String lastFilename;
     juce::String lastSongTitle;
-
-    // left panel
     std::unique_ptr<LeftPanel> leftPanel;
-
-    // controls
     std::unique_ptr<ControlsPanel> controlsPanel;
 
     bool languageChangeGuard = false;
     bool textModified = false;
     bool pendingChanges = false;
     juce::String originalText;
-
-    // tooltips
     juce::TooltipWindow tooltipWindow{ this, 500 };
 
-    // cursor
     std::unique_ptr<juce::Drawable> cursorTri, cursorSq;
     float cursorAngle = 0.0f;
     juce::Point<int> mousePos;

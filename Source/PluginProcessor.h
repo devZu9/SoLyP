@@ -48,22 +48,15 @@ public:
     const Song& getCurrentSong() const { return currentSong; }
     void loadSong(const Song& song);
 
-    int getCurrentSectionIndex() const { return currentSectionIndex; }
-    int getCurrentBar() const { return scrollHead >= 0.0 ? (int)scrollHead : 0; }
+    int sectionTarget = -1;
+    int getSectionTarget() const { return sectionTarget; }
+    void clearSectionTarget() { sectionTarget = -1; }
+
     int getLastMidiNote() const { return lastMidiNote; }
     double getLastMidiNoteTime() const { return lastMidiNoteTime; }
-    double getScrollHead() const { return scrollHead; }
+    double getCurrentBpm() const { return currentBpm; }
     int getPreLinesOnPause() const { return preLinesOnPause; }
     void setPreLinesOnPause(int count) { preLinesOnPause = count; }
-    bool isPauseLineActive() const { return pauseLineActive; }
-    int getPauseLineDisplayIdx() const { return pauseLineDisplayIdx; }
-    int getResumeSkipIdx() const { return resumeSkipIdx; }
-    bool getShowPauseText() const { return showPauseText; }
-    int getCountdownPhase() const { return countdownPhase; }
-    double getCountdownPhaseStart() const { return countdownPhaseStart; }
-    double getCountdownPhaseDuration() const { return countdownPhaseDuration; }
-
-    void timerTick();
 
     std::function<void()> onStateChanged;
 
@@ -79,20 +72,10 @@ private:
 
     TransportState transportState = TransportState::Stopped;
     Song currentSong;
-    int currentSectionIndex = 0;
 
     double currentBpm = 120.0;
-    double scrollHead = -1.0;
-    double lastTimerUpdate = 0.0;
 
     int preLinesOnPause = 1;
-    bool pauseLineActive = false;
-    int pauseLineDisplayIdx = -1;
-    bool showPauseText = true;
-    int countdownPhase = 0;
-    double countdownPhaseStart = 0.0;
-    double countdownPhaseDuration = 0.0;
-    int resumeSkipIdx = 0;
 
     int lastMidiNote = -1;
     double lastMidiNoteTime = 0.0;

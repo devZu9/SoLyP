@@ -9,7 +9,6 @@ namespace SettingsManager
     inline float fontSize = 80.0f;
     inline int preLinesOnPause = 1;
     inline juce::String pauseText;
-    inline int longLineBehavior = 0; // 0 = wrap, 1 = shrink
 
     // language & theme
     inline juce::String language = "ru";

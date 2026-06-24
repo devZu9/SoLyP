@@ -31,7 +31,7 @@ void SettingsManager::load()
     fontSize           = g("fontSize", 80.0f);
     preLinesOnPause    = g("preLinesOnPause", 1);
     pauseText          = obj->hasProperty("pauseText") ? obj->getProperty("pauseText").toString() : juce::String();
-    longLineBehavior   = g("longLineBehavior", 0);
+    pauseText          = obj->hasProperty("pauseText") ? obj->getProperty("pauseText").toString() : juce::String();
     language           = obj->hasProperty("language") ? obj->getProperty("language").toString() : juce::String("ru");
     themeName          = obj->hasProperty("themeName") ? obj->getProperty("themeName").toString() : juce::String("dark");
     octaveSystem       = g("octaveSystem", 0);
@@ -70,7 +70,7 @@ void SettingsManager::save()
     obj->setProperty("fontSize",           fontSize);
     obj->setProperty("preLinesOnPause",    preLinesOnPause);
     obj->setProperty("pauseText",          pauseText);
-    obj->setProperty("longLineBehavior",   longLineBehavior);
+    obj->setProperty("pauseText",          pauseText);
     obj->setProperty("language",           language);
     obj->setProperty("themeName",          themeName);
     obj->setProperty("octaveSystem",       octaveSystem);
