@@ -188,6 +188,14 @@ SettingsComponent::SettingsComponent(std::function<void()> onLangChanged)
             SettingsManager::save();
         };
 
+        card->addSeparator();
+        auto* pauseEditor = card->addEditor(I18n::get("settings.pauseText"), 60);
+        pauseEditor->setText(SettingsManager::pauseText);
+        pauseEditor->onTextChange = [pauseEditor] {
+            SettingsManager::pauseText = pauseEditor->getText();
+            SettingsManager::save();
+        };
+
         container->addAndMakeVisible(card);
     }
 

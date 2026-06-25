@@ -65,11 +65,17 @@ void SettingsCard::resized()
             continue;
         }
 
-        int rowH = 28;
+        int rowH = row.rowHeight;
         if (rowH > b.getHeight()) break;
 
         auto rowArea = b.removeFromTop(rowH);
-        if (row.label) row.label->setBounds(rowArea.removeFromLeft(rowArea.getWidth() / 2));
+        if (row.label)
+        {
+            if (rowH > 40)  // tall row: label on top, control below
+                row.label->setBounds(rowArea.removeFromTop(20).reduced(0, 2));
+            else
+                row.label->setBounds(rowArea.removeFromLeft(rowArea.getWidth() / 2));
+        }
 
         if (row.isPair)
         {
@@ -91,6 +97,8 @@ void SettingsCard::resized()
             row.control->setBounds(rowArea.removeFromLeft(30));
         else if (dynamic_cast<juce::TextButton*>(row.control) != nullptr)
             row.control->setBounds(rowArea.removeFromLeft(30).withHeight(28));
+        else if (dynamic_cast<juce::TextEditor*>(row.control) != nullptr)
+            row.control->setBounds(rowArea.reduced(2, 0));
         else
             row.control->setBounds(rowArea);
 
@@ -127,7 +135,7 @@ juce::Slider* SettingsCard::addSlider(const juce::String& labelText, double min,
     row.label->setFont(juce::FontOptions(12.0f));
     addAndMakeVisible(row.label.get());
 
-    auto* sl = new juce::Slider();
+    auto sl = new juce::Slider();
     sl->setSliderStyle(juce::Slider::LinearHorizontal);
     sl->setTextBoxStyle(juce::Slider::TextBoxRight, false, 50, 20);
     sl->setRange(min, max, step);
@@ -204,6 +212,31 @@ juce::TextButton* SettingsCard::addButton(const juce::String& labelText)
     return btn;
 }
 
+juce::TextEditor* SettingsCard::addEditor(const juce::String& labelText, int height)
+{
+    auto& row = rows.emplace_back();
+    row.rowHeight = height;
+    row.label = std::make_unique<juce::Label>(juce::String(), labelText);
+    row.label->setColour(juce::Label::textColourId, Theme::textPrimary);
+    row.label->setFont(juce::FontOptions(12.0f));
+    addAndMakeVisible(row.label.get());
+
+    auto* ed = new juce::TextEditor();
+    ed->setMultiLine(true, false);
+    ed->setReturnKeyStartsNewLine(true);
+    ed->setFont(juce::Font(juce::FontOptions(14.0f)));
+    ed->setScrollbarsShown(true);
+    ed->setColour(juce::TextEditor::backgroundColourId, Theme::editorBg);
+    ed->setColour(juce::TextEditor::textColourId, Theme::editorText);
+    ed->setColour(juce::CaretComponent::caretColourId, Theme::editorCaret);
+    ed->setColour(juce::TextEditor::highlightColourId, Theme::editorHighlight);
+    ed->setColour(juce::TextEditor::highlightedTextColourId, Theme::editorHighlightedText);
+    ed->setColour(juce::TextEditor::outlineColourId, Theme::editorOutline);
+    row.control = ed;
+    addAndMakeVisible(ed);
+    return ed;
+}
+
 void SettingsCard::addRadioPair(const juce::String& labelText, const juce::String& opt1, const juce::String& opt2,
                                 juce::ToggleButton*& out1, juce::ToggleButton*& out2)
 {
@@ -275,7 +308,7 @@ int SettingsCard::getPreferredHeight() const
         else if (row.control == nullptr)
             h += 8;
         else
-            h += 28 + 12;
+            h += row.rowHeight + 12;
     }
     return h + 16; // bottom padding
 }

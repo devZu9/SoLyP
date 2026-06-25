@@ -14,6 +14,7 @@ public:
     juce::ToggleButton* addToggle(const juce::String& labelKey);
     void addToggleWithInfo(const juce::String& labelKey, juce::ToggleButton*& outToggle, juce::DrawableButton*& outInfo);
     juce::TextButton* addButton(const juce::String& labelKey);
+    juce::TextEditor* addEditor(const juce::String& labelKey, int height = 60);
     void addRadioPair(const juce::String& labelKey, const juce::String& opt1, const juce::String& opt2,
                       juce::ToggleButton*& out1, juce::ToggleButton*& out2);
     void addImagePair(const juce::String& labelKey, const juce::Drawable* img1, const juce::Drawable* img2,
@@ -31,6 +32,7 @@ private:
         bool isPair = false;
         bool isInfoPair = false;
         bool isSeparator = false;
+        int rowHeight = 28;
     };
     std::vector<Row> rows;
 };

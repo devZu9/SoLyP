@@ -219,23 +219,55 @@ void SoLyPAudioProcessorEditor::paintScroll(juce::Graphics& g)
     }
 }
 
-// оверлей паузы: "ПАУЗА" золотым — движется снизу вверх, замирает наверху
+// оверлей паузы: сообщение — движется снизу вверх, замирает наверху
+// поддерживает 1-2 строки, шрифт авто-подбирается по ширине окна
 void SoLyPAudioProcessorEditor::paintPauseText(juce::Graphics& g)
 {
     auto state = processor.getTransportState();
     if (state != SoLyPAudioProcessor::TransportState::Paused || !showPauseText) return;
 
+    // получить текст сообщения (из настроек или язык по умолчанию)
+    juce::String msgText = SettingsManager::pauseText.isNotEmpty()
+        ? SettingsManager::pauseText
+        : I18n::get("pause.text");
+    if (msgText.isEmpty()) return;
+
+    auto lines = juce::StringArray::fromLines(msgText);
+    if (lines.isEmpty()) return;
+
     auto bounds = getLocalBounds().reduced(40, 20);
-    float lh = SettingsManager::fontSize * SettingsManager::lineSpacing;
+    float availW = (float)bounds.getWidth() - 40.0f; // gap 20px с каждой стороны
+
+    // авто-подбор размера шрифта: вписать самую широкую строку в availW
+    float refSize = 14.0f;
+    juce::Font refFont{juce::FontOptions(refSize)};
+    float maxLineW = 0.0f;
+    for (auto& ln : lines)
+    {
+        float w = refFont.getStringWidthFloat(ln);
+        if (w > maxLineW) maxLineW = w;
+    }
+
+    float pauseFontSize = refSize;
+    if (maxLineW > 0.0f)
+        pauseFontSize = refSize * (availW / maxLineW);
+    pauseFontSize = juce::jlimit(14.0f, 72.0f, pauseFontSize);
+
+    float lh = pauseFontSize * SettingsManager::lineSpacing;
+    float totalH = (float)lines.size() * lh;
 
     float pauseY = (float)(bounds.getBottom() + pauseMsgY);
     if (pauseY < (float)bounds.getY()) pauseY = (float)bounds.getY();
-    if (pauseY + lh <= (float)bounds.getBottom())
+    if (pauseY + totalH > (float)bounds.getBottom()) return;
+
+    g.setColour(Theme::textPause);
+    g.setFont(juce::FontOptions(pauseFontSize));
+
+    for (int i = 0; i < lines.size(); ++i)
     {
-        g.setColour(Theme::textPause);
-        g.setFont(juce::FontOptions(SettingsManager::fontSize));
-        g.drawText(I18n::get("pause.text"),
-            juce::Rectangle<float>((float)bounds.getX(), pauseY, (float)bounds.getWidth(), lh),
+        float y = pauseY + (float)i * lh;
+        g.drawText(lines[i],
+            juce::Rectangle<float>((float)bounds.getX(), y, (float)bounds.getWidth(), lh),
             juce::Justification::centred, false);
     }
 }
