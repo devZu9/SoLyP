@@ -46,7 +46,7 @@ void SoLyPAudioProcessorEditor::initSlots() {
 
     int N = SettingsManager::visibleLines;
     auto bounds = getLocalBounds().reduced(40, 20);
-    float lh = SettingsManager::fontSize * SettingsManager::lineSpacing;
+    float lineHeight = getRealLineHeight(SettingsManager::fontSize);
 
     slots.resize(N);
     nextLineIndex = 0;
@@ -54,16 +54,16 @@ void SoLyPAudioProcessorEditor::initSlots() {
 
     int linesAvail = song.displayLines.size() - nextLineIndex;
     int linesToShow = std::min(N, linesAvail);
-    float totalH = linesToShow * lh;
+    float totalH = linesToShow * lineHeight;
     float startY = bounds.getY() + (bounds.getHeight() - totalH) / 2.0f;
     for (int i = 0; i < N; ++i) {
         int idx = nextLineIndex + i;
         if (i < linesToShow && idx < song.displayLines.size()) {
             slots[i].text = song.displayLines[idx].text;
-            slots[i].y = startY + i * lh;
+            slots[i].y = startY + i * lineHeight;
         } else {
             slots[i].text = {};
-            slots[i].y = startY + linesToShow * lh;
+            slots[i].y = startY + linesToShow * lineHeight;
         }
     }
 
@@ -81,7 +81,7 @@ void SoLyPAudioProcessorEditor::setupPreLines() {
     if (N <= 0 || song.displayLines.isEmpty()) return;
 
     auto bounds = getLocalBounds().reduced(40, 20);
-    float lh = SettingsManager::fontSize * SettingsManager::lineSpacing;
+    float lineHeight = getRealLineHeight(SettingsManager::fontSize);
 
     useCenterY = false;
     int pre = std::min(SettingsManager::preLinesOnPause, N);
@@ -91,7 +91,7 @@ void SoLyPAudioProcessorEditor::setupPreLines() {
             slots[i].text = song.displayLines[idx].text;
         else
             slots[i].text = {};
-        slots[i].y = bounds.getBottom() - (float)(N - i) * lh;
+        slots[i].y = bounds.getBottom() - (float)(N - i) * lineHeight;
     }
 }
 
@@ -111,14 +111,6 @@ double SoLyPAudioProcessorEditor::getTimePerLine() {
     double barDuration = 60.0 / bpm * (double)SettingsManager::timeSignature;
     if (barDuration <= 0.0) return -1.0;
     return barDuration * (double)SettingsManager::barsPerLine / (double)parts;
-}
-
-// базовая Y-позиция слота idx с учётом смещения offset (в долях lineHeight)
-double SoLyPAudioProcessorEditor::getSlotY(int idx, double offset) const {
-    auto bounds = getLocalBounds().reduced(40, 20);
-    float lh = SettingsManager::fontSize * SettingsManager::lineSpacing;
-    int N = (int)slots.size();
-    return bounds.getBottom() - (float)(N - idx) * lh - (float)(offset * lh);
 }
 
 // ── отрисовка ──────────────────────────────────────────────────────────────
@@ -170,23 +162,23 @@ void SoLyPAudioProcessorEditor::initPaint(juce::Graphics& g)
     if (slots.empty()) return;
 
     auto bounds = getLocalBounds().reduced(40, 20);
-    float lh = SettingsManager::fontSize * SettingsManager::lineSpacing;
+    float lineHeight = getRealLineHeight(SettingsManager::fontSize);
     int N = (int)slots.size();
 
     for (int i = 0; i < N; ++i)
     {
         if (slots[i].text.isEmpty()) continue;
         float y = (float)slots[i].y;
-        if (y + lh < (float)bounds.getY() || y > (float)bounds.getBottom()) continue;
+        if (y + lineHeight < (float)bounds.getY() || y > (float)bounds.getBottom()) continue;
         g.setColour(Theme::textOnButton);
         g.setFont(juce::FontOptions(SettingsManager::fontSize));
         g.drawText(slots[i].text,
-            juce::Rectangle<float>((float)bounds.getX(), y, (float)bounds.getWidth(), lh),
+            juce::Rectangle<float>((float)bounds.getX(), y, (float)bounds.getWidth(), lineHeight),
             juce::Justification::centred, false);
     }
 }
 
-// отрисовка скролла (Play/Pause/Countdown/Stop): Y = база - scrollOffset*lh
+// отрисовка скролла (Play/Pause/Countdown/Stop): Y из slots[i].y
 void SoLyPAudioProcessorEditor::paintScroll(juce::Graphics& g)
 {
     const auto& song = processor.getCurrentSong();
@@ -194,27 +186,20 @@ void SoLyPAudioProcessorEditor::paintScroll(juce::Graphics& g)
     if (slots.empty()) return;
 
     auto bounds = getLocalBounds().reduced(40, 20);
-    float lh = SettingsManager::fontSize * SettingsManager::lineSpacing;
+    float lineHeight = getRealLineHeight(SettingsManager::fontSize);
     int N = (int)slots.size();
-    int pre = std::min(SettingsManager::preLinesOnPause, N);
-    auto state = processor.getTransportState();
 
     for (int i = 0; i < N; ++i)
     {
         if (slots[i].text.isEmpty()) continue;
 
-        float y;
-        if (state == SoLyPAudioProcessor::TransportState::Paused && i >= N - pre)
-            y = getSlotY(i, 0.0f);
-        else
-            y = getSlotY(i, 0.0f) - (float)(scrollOffset * lh);
-
-        if (y + lh < (float)bounds.getY() || y > (float)bounds.getBottom()) continue;
+        float y = (float)slots[i].y;
+        if (y + lineHeight < (float)bounds.getY() || y > (float)bounds.getBottom()) continue;
 
         g.setColour(Theme::textOnButton);
         g.setFont(juce::FontOptions(SettingsManager::fontSize));
         g.drawText(slots[i].text,
-            juce::Rectangle<float>((float)bounds.getX(), y, (float)bounds.getWidth(), lh),
+            juce::Rectangle<float>((float)bounds.getX(), y, (float)bounds.getWidth(), lineHeight),
             juce::Justification::centred, false);
     }
 }
@@ -253,8 +238,8 @@ void SoLyPAudioProcessorEditor::paintPauseText(juce::Graphics& g)
         pauseFontSize = refSize * (availW / maxLineW);
     pauseFontSize = juce::jlimit(14.0f, 72.0f, pauseFontSize);
 
-    float lh = pauseFontSize * SettingsManager::lineSpacing;
-    float totalH = (float)lines.size() * lh;
+    float lineHeight = getRealLineHeight(pauseFontSize);
+    float totalH = (float)lines.size() * lineHeight;
 
     float pauseY = (float)(bounds.getBottom() + pauseMsgY);
     if (pauseY < (float)bounds.getY()) pauseY = (float)bounds.getY();
@@ -265,9 +250,9 @@ void SoLyPAudioProcessorEditor::paintPauseText(juce::Graphics& g)
 
     for (int i = 0; i < lines.size(); ++i)
     {
-        float y = pauseY + (float)i * lh;
+        float y = pauseY + (float)i * lineHeight;
         g.drawText(lines[i],
-            juce::Rectangle<float>((float)bounds.getX(), y, (float)bounds.getWidth(), lh),
+            juce::Rectangle<float>((float)bounds.getX(), y, (float)bounds.getWidth(), lineHeight),
             juce::Justification::centred, false);
     }
 }
@@ -481,7 +466,7 @@ void SoLyPAudioProcessorEditor::applySongLoad(Song& song, const juce::File& file
 // максимальное количество строк, которое влезает в окно при заданном шрифте
 int calcFittingLines(int height, float fontSize, const Song& song)
 {
-    float lineHeight = fontSize * SettingsManager::lineSpacing;
+    float lineHeight = getRealLineHeight(fontSize);
     int maxTheoretical = static_cast<int>((height - 20) / lineHeight);
     int actualLines = song.displayLines.size();
     return juce::jlimit(2, juce::jmin(20, maxTheoretical), actualLines);

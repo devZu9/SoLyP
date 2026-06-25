@@ -40,10 +40,12 @@ public:
     enum class TransportState { Stopped, Playing, Paused, Countdown };
     TransportState getTransportState() const { return transportState; }
 
-    void enterPlay();
-    void enterPause();
-    void enterStop();
-    void enterCountdown();
+    void switchPlay();
+    void switchPause();
+    void switchStop();
+    void switchCountdown();
+    void switchHybrid();
+    void switchLandmark();
 
     const Song& getCurrentSong() const { return currentSong; }
     void loadSong(const Song& song);

@@ -57,6 +57,24 @@ SoLyPAudioProcessorEditor::SoLyPAudioProcessorEditor(SoLyPAudioProcessor& p)
             g.setFont(juce::Font(juce::FontOptions(Theme::baseFontSize * Theme::tooltipSize)));
             g.drawFittedText(text, 5, 0, width - 10, height, juce::Justification::centred, 5);
         }
+
+        juce::Rectangle<int> getTooltipBounds(const juce::String& tipText, juce::Point<int> screenPos,
+                                               juce::Rectangle<int> parentArea) override
+        {
+            juce::Font f(juce::FontOptions(Theme::baseFontSize * Theme::tooltipSize));
+            auto lines = juce::StringArray::fromLines(tipText);
+            int maxLineW = 0;
+            for (auto& ln : lines)
+                maxLineW = juce::jmax(maxLineW, f.getStringWidth(ln));
+            int textW = juce::jmin(maxLineW + 20, parentArea.getWidth() - 20);
+            int lineCount = juce::jmax(1, lines.size());
+            int textH = (int)(f.getHeight() * (float)lineCount * 1.3f) + 10;
+            int x = screenPos.x + 12;
+            int y = screenPos.y + 12;
+            if (x + textW > parentArea.getRight()) x = parentArea.getRight() - textW - 4;
+            if (y + textH > parentArea.getBottom()) y = screenPos.y - textH - 4;
+            return { x, y, textW, textH };
+        }
     };
     tooltipLAF = std::make_unique<SoLyPTooltipLAF>();
     setLookAndFeel(tooltipLAF.get());
@@ -181,9 +199,10 @@ SoLyPAudioProcessorEditor::SoLyPAudioProcessorEditor(SoLyPAudioProcessor& p)
                 switch (state)
                 {
                 case SoLyPAudioProcessor::TransportState::Stopped:
-                    stopTimer(ScrollId);
-                    stopTimer(PauseId);
-                    stopTimer(CountdownId);
+                    stopTimer(TimerScroll);
+                    stopTimer(TimerPreLines);
+                    stopTimer(TimerPause);
+                    stopTimer(TimerCountdown);
                     if (slots.empty())
                         initSlots();
                     break;
@@ -198,18 +217,21 @@ SoLyPAudioProcessorEditor::SoLyPAudioProcessorEditor(SoLyPAudioProcessor& p)
                         setupPreLines();
                         nextLineIndex = std::min(SettingsManager::preLinesOnPause, (int)slots.size());
                     }
-                    if (lastState == SoLyPAudioProcessor::TransportState::Paused)
-                        scrollOffset = 0.0;
-                    stopTimer(PauseId);
-                    startTimer(ScrollId, 50);
+                    stopTimer(TimerPreLines);
+                    stopTimer(TimerPause);
+                    startTimer(TimerScroll, 50);
                     break;
-                case SoLyPAudioProcessor::TransportState::Paused:
-                    showPauseText = true;
+                 case SoLyPAudioProcessor::TransportState::Paused:
+					showPauseText = true;
                     pauseMsgY = 0.0;
-                    lastScrollTime = juce::Time::getMillisecondCounterHiRes();
-                    stopTimer(ScrollId);
-                    startTimer(PauseId, 50);
-                    stopTimer(CountdownId);
+                    pauseMsgSpeed = getTimePerLine() * 1000.0 / 5.0;
+					lastPauseTime = juce::Time::getMillisecondCounterHiRes();
+                    startTimer(TimerPause, 50);
+                    stopTimer(TimerCountdown);
+//                    pauseShiftCount = 0;
+//                    preScroll = 0.0;
+//                    lastPreLineTime = juce::Time::getMillisecondCounterHiRes();
+//                    startTimer(TimerPreLines, 50);
                     break;
                 case SoLyPAudioProcessor::TransportState::Countdown:
                 {
@@ -220,9 +242,10 @@ SoLyPAudioProcessorEditor::SoLyPAudioProcessorEditor(SoLyPAudioProcessor& p)
                     countdownPhaseDuration = 0.5 * (60000.0 / bpm * (double)SettingsManager::timeSignature);
                     countdownPhase = 1;
                     countdownPhaseStart = juce::Time::getMillisecondCounterHiRes();
-                    stopTimer(PauseId);
-                    startTimer(ScrollId, 50);
-                    startTimer(CountdownId, 50);
+                    stopTimer(TimerPreLines);
+                    stopTimer(TimerPause);
+                    startTimer(TimerScroll, 50);
+                    startTimer(TimerCountdown, 50);
                     break;
                 }
                 }
@@ -254,7 +277,7 @@ SoLyPAudioProcessorEditor::SoLyPAudioProcessorEditor(SoLyPAudioProcessor& p)
     };
 
     if (SettingsManager::cursorEnabled)
-        startTimer(CursorId, 16);
+        startTimer(TimerCursor, 16);
 }
 
 SoLyPAudioProcessorEditor::~SoLyPAudioProcessorEditor()

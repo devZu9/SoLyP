@@ -30,11 +30,12 @@ public:
     bool isTextModified() const { return pendingChanges; }
 
 private:
-    enum TimerId { ScrollId = 1, PauseId = 2, CountdownId = 3, CursorId = 4 };
+    enum TimerType { TimerScroll = 1, TimerPause = 2, TimerCountdown = 3, TimerCursor = 4, TimerPreLines = 5 };
 
     void timerCallback(int timerId) override;
     void scrollCallback();
     void pauseCallback();
+    void preLinesCallback();
     void countdownCallback();
     void cursorCallback();
     void buttonClicked(juce::Button*) override;
@@ -67,13 +68,11 @@ private:
     void initSlots();
     void setupPreLines();
     double getTimePerLine();
-    double getSlotY(int idx, double offset) const;
 
     SoLyPAudioProcessor& processor;
 
     // slots
     std::vector<Slot> slots;
-    double scrollOffset = 0.0;
     int nextLineIndex = 0;
     double lastScrollTime = 0.0;
     bool useCenterY = true;
@@ -88,6 +87,12 @@ private:
     int countdownPhase = 0;
     double countdownPhaseStart = 0.0;
     double countdownPhaseDuration = 0.0;
+
+    int pauseShiftCount = 0;
+    double preScroll = 0.0;
+    double lastPreLineTime = 0.0;
+    double lastPauseTime = 0.0;
+    double pauseMsgSpeed = 0.0;
 
     juce::String lastError;
 

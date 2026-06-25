@@ -88,13 +88,14 @@ void SoLyPAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::M
     }
 }
 
-void SoLyPAudioProcessor::enterPlay()
+void SoLyPAudioProcessor::switchPlay()
 {
+    if (transportState == TransportState::Countdown) return;
     transportState = TransportState::Playing;
     if (onStateChanged) onStateChanged();
 }
 
-void SoLyPAudioProcessor::enterPause()
+void SoLyPAudioProcessor::switchPause()
 {
     if (transportState == TransportState::Paused
         || transportState == TransportState::Stopped) return;
@@ -102,19 +103,34 @@ void SoLyPAudioProcessor::enterPause()
     if (onStateChanged) onStateChanged();
 }
 
-void SoLyPAudioProcessor::enterStop()
+void SoLyPAudioProcessor::switchStop()
 {
     if (transportState == TransportState::Stopped) return;
     transportState = TransportState::Stopped;
     if (onStateChanged) onStateChanged();
 }
 
-void SoLyPAudioProcessor::enterCountdown()
+void SoLyPAudioProcessor::switchCountdown()
 {
     if (transportState == TransportState::Playing
         || transportState == TransportState::Countdown) return;
     transportState = TransportState::Countdown;
     if (onStateChanged) onStateChanged();
+}
+
+void SoLyPAudioProcessor::switchHybrid()
+{
+    if (transportState == TransportState::Countdown) return;
+    switchToNextSection();
+    transportState = TransportState::Playing;
+    if (onStateChanged) onStateChanged();
+}
+
+void SoLyPAudioProcessor::switchLandmark()
+{
+    if (transportState == TransportState::Countdown) return;
+    int sectionIndex = midiManager.getLastLandmarkSection();
+    if (sectionIndex >= 0) switchToSection(sectionIndex);
 }
 
 void SoLyPAudioProcessor::loadSong(const Song& song)
@@ -151,30 +167,26 @@ void SoLyPAudioProcessor::processMidiMessage(const juce::MidiMessage& msg)
         switch (cmd)
         {
         case MidiManager::Command::Play:
-            if (transportState != TransportState::Countdown) enterPlay();
+            switchPlay();
             break;
         case MidiManager::Command::Countdown3:
-            if (transportState != TransportState::Countdown) enterCountdown();
+            switchCountdown();
             break;
         case MidiManager::Command::Stop:
-            if (transportState != TransportState::Countdown) enterStop();
+            switchStop();
             break;
         case MidiManager::Command::Pause:
-            if (transportState != TransportState::Countdown) enterPause();
+            switchPause();
             break;
         case MidiManager::Command::NextSection:
             switchToNextSection();
             break;
         case MidiManager::Command::Hybrid:
-            switchToNextSection();
-            enterPlay();
+            switchHybrid();
             break;
         case MidiManager::Command::Landmark:
-        {
-            int sectionIndex = midiManager.getLastLandmarkSection();
-            if (sectionIndex >= 0) switchToSection(sectionIndex);
+            switchLandmark();
             break;
-        }
         }
     });
 }

@@ -50,7 +50,6 @@ void SoLyPAudioProcessorEditor::sliderValueChanged(juce::Slider* slider)
 
     auto bounds = getLocalBounds().reduced(40, 20);
     float availH = (float)bounds.getHeight();
-    float lhMult = SettingsManager::lineSpacing;
 
     if (slider == &controlsPanel->linesSlider)
     {
@@ -58,7 +57,7 @@ void SoLyPAudioProcessorEditor::sliderValueChanged(juce::Slider* slider)
         if (newLines > 0)
         {
             SettingsManager::visibleLines = newLines;
-            SettingsManager::fontSize = availH / ((float)newLines * lhMult);
+            SettingsManager::fontSize = availH / ((float)newLines * getRealLineHeight(1.0f));
             controlsPanel->fontSizeSlider.setValue((double)SettingsManager::fontSize, juce::dontSendNotification);
         }
     }
@@ -68,7 +67,7 @@ void SoLyPAudioProcessorEditor::sliderValueChanged(juce::Slider* slider)
         if (newSize > 0.0f)
         {
             SettingsManager::fontSize = newSize;
-            int newLines = (int)(availH / (newSize * lhMult));
+            int newLines = (int)(availH / getRealLineHeight(newSize));
             if (newLines < 1) newLines = 1;
             SettingsManager::visibleLines = newLines;
             controlsPanel->linesSlider.setValue((double)newLines, juce::dontSendNotification);
@@ -77,7 +76,7 @@ void SoLyPAudioProcessorEditor::sliderValueChanged(juce::Slider* slider)
     else if (slider == &controlsPanel->gapSlider)
     {
         SettingsManager::lineSpacing = (float)controlsPanel->gapSlider.getValue();
-        int newLines = (int)(availH / (SettingsManager::fontSize * SettingsManager::lineSpacing));
+        int newLines = (int)(availH / getRealLineHeight(SettingsManager::fontSize));
         if (newLines < 1) newLines = 1;
         SettingsManager::visibleLines = newLines;
         controlsPanel->linesSlider.setValue((double)newLines, juce::dontSendNotification);

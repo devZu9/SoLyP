@@ -34,7 +34,7 @@ ControlsPanel::ControlsPanel()
 
     gapSlider.setSliderStyle(juce::Slider::LinearHorizontal);
     gapSlider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 40, 20);
-    gapSlider.setRange(0.75, 2.0, 0.05);
+    gapSlider.setRange(0.0, 2.0, 0.05);
     gapSlider.setValue((double)SettingsManager::lineSpacing);
     gapSlider.setColour(juce::Slider::trackColourId, Theme::sliderTrack);
     gapSlider.setColour(juce::Slider::thumbColourId, Theme::sliderThumb);
