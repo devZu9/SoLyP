@@ -28,9 +28,14 @@ void SettingsManager::load()
     };
 
     visibleLines       = g("visibleLines", 6);
-    fontSize           = g("fontSize", 80.0f);
+    fontSize           = std::round(g("fontSize", 80.0f));
     preLinesOnPause    = g("preLinesOnPause", 1);
-    lineSpacing        = g("lineSpacing", 1.4f);
+    if (obj->hasProperty("lineSpacingInt"))
+        lineSpacing = (float)g("lineSpacingInt", 140) / 100.0f;
+    else if (obj->hasProperty("lineSpacing"))
+        lineSpacing = std::round((float)g("lineSpacing", 1.4f) * 20.0f) / 20.0f;
+    else
+        lineSpacing = 1.4f;
     pauseText          = obj->hasProperty("pauseText") ? obj->getProperty("pauseText").toString() : juce::String();
     language           = obj->hasProperty("language") ? obj->getProperty("language").toString() : juce::String("ru");
     themeName          = obj->hasProperty("themeName") ? obj->getProperty("themeName").toString() : juce::String("dark");
@@ -73,9 +78,9 @@ void SettingsManager::save()
     if (noStartSave) return;
     auto obj = std::make_unique<juce::DynamicObject>();
     obj->setProperty("visibleLines",       visibleLines);
-    obj->setProperty("fontSize",           fontSize);
+    obj->setProperty("fontSize",           std::round(fontSize));
     obj->setProperty("preLinesOnPause",    preLinesOnPause);
-    obj->setProperty("lineSpacing",        lineSpacing);
+    obj->setProperty("lineSpacingInt",     (int)std::round(lineSpacing * 100.0f));
     obj->setProperty("pauseText",          pauseText);
     obj->setProperty("language",           language);
     obj->setProperty("themeName",          themeName);

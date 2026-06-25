@@ -30,7 +30,7 @@ void SoLyPAudioProcessorEditor::scrollCallback()
         || state == SoLyPAudioProcessor::TransportState::Countdown && countdownPhase > 0)
         step *= 5.0;
 
-    double lineHeight = getRealLineHeight(SettingsManager::fontSize);
+    double lineHeight = realLineHeight;
     double stepPerFramePx = step * lineHeight;
     int N = (int)slots.size();
 
@@ -84,7 +84,7 @@ void SoLyPAudioProcessorEditor::preLinesCallback()
     int N = (int)slots.size();
     int pre = std::min(SettingsManager::preLinesOnPause, N);
     int preStart = N - pre;
-    double lineHeight = getRealLineHeight(SettingsManager::fontSize);
+    double lineHeight = realLineHeight;
 
     // Движение предстрок
     double stepPerFramePx = step * lineHeight;
@@ -130,7 +130,7 @@ void SoLyPAudioProcessorEditor::pauseCallback()
     double now = juce::Time::getMillisecondCounterHiRes();
     double actualTimePerFrameMs = now - lastPauseTime;
     lastPauseTime = now;
-    double lineHeight = getRealLineHeight(SettingsManager::fontSize);
+    double lineHeight = realLineHeight;
     double stepPerFramePx = actualTimePerFrameMs / pauseMsgSpeed * lineHeight;
     pauseMsgY -= stepPerFramePx;
 

@@ -22,7 +22,12 @@
     "editorBg": "0xFF13294B",
     "editorText": "0xFFE0EDFF",
     "editorCaret": "0xFFE0EDFF",
-    "editorHighlight": "0xFF1A2A4A",
+    "editorHighlight": "0xFF3A5A8A",
     "editorHighlightedText": "0xFFFFFFFF",
-    "editorOutline": "0x00000000"
+    "editorOutline": "0x00000000",
+    "baseFontSize": 12.0,
+    "tooltipSize": 1.8,
+    "tooltipBg": "0xFF1A1A2E",
+    "tooltipText": "0xFFFFCC00",
+    "tooltipOutline": "0xFF4A6FA5"
 }

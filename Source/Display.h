@@ -82,6 +82,7 @@ private:
     // pause
     bool showPauseText = false;
     double pauseMsgY = 0.0;
+    double realLineHeight = 0.0;
 
     // countdown
     int countdownPhase = 0;

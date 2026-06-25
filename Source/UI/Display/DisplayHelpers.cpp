@@ -46,7 +46,7 @@ void SoLyPAudioProcessorEditor::initSlots() {
 
     int N = SettingsManager::visibleLines;
     auto bounds = getLocalBounds().reduced(40, 20);
-    float lineHeight = getRealLineHeight(SettingsManager::fontSize);
+    float lineHeight = (float)realLineHeight;
 
     slots.resize(N);
     nextLineIndex = 0;
@@ -81,7 +81,7 @@ void SoLyPAudioProcessorEditor::setupPreLines() {
     if (N <= 0 || song.displayLines.isEmpty()) return;
 
     auto bounds = getLocalBounds().reduced(40, 20);
-    float lineHeight = getRealLineHeight(SettingsManager::fontSize);
+    float lineHeight = (float)realLineHeight;
 
     useCenterY = false;
     int pre = std::min(SettingsManager::preLinesOnPause, N);
@@ -162,7 +162,7 @@ void SoLyPAudioProcessorEditor::initPaint(juce::Graphics& g)
     if (slots.empty()) return;
 
     auto bounds = getLocalBounds().reduced(40, 20);
-    float lineHeight = getRealLineHeight(SettingsManager::fontSize);
+    float lineHeight = (float)realLineHeight;
     int N = (int)slots.size();
 
     for (int i = 0; i < N; ++i)
@@ -186,7 +186,7 @@ void SoLyPAudioProcessorEditor::paintScroll(juce::Graphics& g)
     if (slots.empty()) return;
 
     auto bounds = getLocalBounds().reduced(40, 20);
-    float lineHeight = getRealLineHeight(SettingsManager::fontSize);
+    float lineHeight = (float)realLineHeight;
     int N = (int)slots.size();
 
     for (int i = 0; i < N; ++i)
@@ -238,7 +238,7 @@ void SoLyPAudioProcessorEditor::paintPauseText(juce::Graphics& g)
         pauseFontSize = refSize * (availW / maxLineW);
     pauseFontSize = juce::jlimit(14.0f, 72.0f, pauseFontSize);
 
-    float lineHeight = getRealLineHeight(pauseFontSize);
+    float lineHeight = pauseFontSize * 0.6f * (1.0f + SettingsManager::lineSpacing);
     float totalH = (float)lines.size() * lineHeight;
 
     float pauseY = (float)(bounds.getBottom() + pauseMsgY);
@@ -464,10 +464,4 @@ void SoLyPAudioProcessorEditor::applySongLoad(Song& song, const juce::File& file
 }
 
 // максимальное количество строк, которое влезает в окно при заданном шрифте
-int calcFittingLines(int height, float fontSize, const Song& song)
-{
-    float lineHeight = getRealLineHeight(fontSize);
-    int maxTheoretical = static_cast<int>((height - 20) / lineHeight);
-    int actualLines = song.displayLines.size();
-    return juce::jlimit(2, juce::jmin(20, maxTheoretical), actualLines);
-}
+

@@ -49,7 +49,7 @@ void SoLyPAudioProcessorEditor::sliderValueChanged(juce::Slider* slider)
     if (!controlsPanel) return;
 
     auto bounds = getLocalBounds().reduced(40, 20);
-    float availH = (float)bounds.getHeight();
+    float maxAvailableHeight = (float)bounds.getHeight();
 
     if (slider == &controlsPanel->linesSlider)
     {
@@ -57,17 +57,17 @@ void SoLyPAudioProcessorEditor::sliderValueChanged(juce::Slider* slider)
         if (newLines > 0)
         {
             SettingsManager::visibleLines = newLines;
-            SettingsManager::fontSize = availH / ((float)newLines * getRealLineHeight(1.0f));
+            float mult = 0.6f * (1.0f + SettingsManager::lineSpacing);
+            SettingsManager::fontSize = std::floor(maxAvailableHeight / ((float)newLines * mult));
             controlsPanel->fontSizeSlider.setValue((double)SettingsManager::fontSize, juce::dontSendNotification);
         }
     }
     else if (slider == &controlsPanel->fontSizeSlider)
     {
-        float newSize = static_cast<float>(controlsPanel->fontSizeSlider.getValue());
-        if (newSize > 0.0f)
+        if (controlsPanel->fontSizeSlider.getValue() > 0.0f)
         {
-            SettingsManager::fontSize = newSize;
-            int newLines = (int)(availH / getRealLineHeight(newSize));
+            SettingsManager::fontSize = std::round((float)controlsPanel->fontSizeSlider.getValue());
+            int newLines = (int)(maxAvailableHeight / getRealLineHeight());
             if (newLines < 1) newLines = 1;
             SettingsManager::visibleLines = newLines;
             controlsPanel->linesSlider.setValue((double)newLines, juce::dontSendNotification);
@@ -75,13 +75,15 @@ void SoLyPAudioProcessorEditor::sliderValueChanged(juce::Slider* slider)
     }
     else if (slider == &controlsPanel->gapSlider)
     {
-        SettingsManager::lineSpacing = (float)controlsPanel->gapSlider.getValue();
-        int newLines = (int)(availH / getRealLineHeight(SettingsManager::fontSize));
+        float raw = (float)controlsPanel->gapSlider.getValue();
+        SettingsManager::lineSpacing = std::round(raw * 20.0f) / 20.0f;
+        int newLines = (int)(maxAvailableHeight / getRealLineHeight());
         if (newLines < 1) newLines = 1;
         SettingsManager::visibleLines = newLines;
         controlsPanel->linesSlider.setValue((double)newLines, juce::dontSendNotification);
     }
 
+    realLineHeight = getRealLineHeight();
     updateLineCount();
     rebuildDisplayLines();
     const auto& song = processor.getCurrentSong();
@@ -277,7 +279,8 @@ void SoLyPAudioProcessorEditor::updateLineCount()
     if (!controlsPanel) return;
     const auto& song = processor.getCurrentSong();
     if (song.textSong.isEmpty()) return;
-    int fitting = calcFittingLines(getHeight(), SettingsManager::fontSize, song);
+    int maxLinesFit = (int)((getHeight() - 20) / realLineHeight);
+    int fitting = juce::jlimit(2, juce::jmin(20, maxLinesFit), (int)song.displayLines.size());
     int newVal = juce::jmin((int)controlsPanel->linesSlider.getValue(), fitting);
     controlsPanel->linesSlider.setValue((double)newVal, juce::dontSendNotification);
 }

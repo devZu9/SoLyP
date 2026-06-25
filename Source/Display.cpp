@@ -208,7 +208,8 @@ SoLyPAudioProcessorEditor::SoLyPAudioProcessorEditor(SoLyPAudioProcessor& p)
                     break;
                 case SoLyPAudioProcessor::TransportState::Playing:
                     showPauseText = false;
-                    lastScrollTime = juce::Time::getMillisecondCounterHiRes();
+    lastScrollTime = juce::Time::getMillisecondCounterHiRes();
+    realLineHeight = getRealLineHeight();
                     if (lastState == SoLyPAudioProcessor::TransportState::Stopped
                         && !processor.getCurrentSong().textSong.isEmpty())
                     {
