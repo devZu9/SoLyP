@@ -30,7 +30,7 @@ void SettingsManager::load()
     visibleLines       = g("visibleLines", 6);
     fontSize           = g("fontSize", 80.0f);
     preLinesOnPause    = g("preLinesOnPause", 1);
-    pauseText          = obj->hasProperty("pauseText") ? obj->getProperty("pauseText").toString() : juce::String();
+    lineSpacing        = g("lineSpacing", 1.4f);
     pauseText          = obj->hasProperty("pauseText") ? obj->getProperty("pauseText").toString() : juce::String();
     language           = obj->hasProperty("language") ? obj->getProperty("language").toString() : juce::String("ru");
     themeName          = obj->hasProperty("themeName") ? obj->getProperty("themeName").toString() : juce::String("dark");
@@ -69,7 +69,7 @@ void SettingsManager::save()
     obj->setProperty("visibleLines",       visibleLines);
     obj->setProperty("fontSize",           fontSize);
     obj->setProperty("preLinesOnPause",    preLinesOnPause);
-    obj->setProperty("pauseText",          pauseText);
+    obj->setProperty("lineSpacing",        lineSpacing);
     obj->setProperty("pauseText",          pauseText);
     obj->setProperty("language",           language);
     obj->setProperty("themeName",          themeName);

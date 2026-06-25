@@ -2,6 +2,7 @@
 #include "icons/Icons.h"
 #include "Theme.h"
 #include "../Data/I18n.h"
+#include "../Data/SettingsManager.h"
 
 ControlsPanel::ControlsPanel()
 {
@@ -12,7 +13,7 @@ ControlsPanel::ControlsPanel()
 
     linesSlider.setSliderStyle(juce::Slider::LinearHorizontal);
     linesSlider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 40, 20);
-    linesSlider.setRange(2.0, 12.0, 1.0);
+    linesSlider.setRange(2.0, 20.0, 1.0);
     linesSlider.setValue(6.0);
     linesSlider.setColour(juce::Slider::trackColourId, Theme::sliderTrack);
     linesSlider.setColour(juce::Slider::thumbColourId, Theme::sliderThumb);
@@ -30,6 +31,17 @@ ControlsPanel::ControlsPanel()
     fontSizeSlider.setColour(juce::Slider::textBoxTextColourId, Theme::textPrimary);
     fontSizeSlider.setColour(juce::Slider::textBoxBackgroundColourId, Theme::bgPanel);
     addAndMakeVisible(fontSizeSlider);
+
+    gapSlider.setSliderStyle(juce::Slider::LinearHorizontal);
+    gapSlider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 40, 20);
+    gapSlider.setRange(0.75, 2.0, 0.05);
+    gapSlider.setValue((double)SettingsManager::lineSpacing);
+    gapSlider.setColour(juce::Slider::trackColourId, Theme::sliderTrack);
+    gapSlider.setColour(juce::Slider::thumbColourId, Theme::sliderThumb);
+    gapSlider.setColour(juce::Slider::textBoxTextColourId, Theme::textPrimary);
+    gapSlider.setColour(juce::Slider::textBoxBackgroundColourId, Theme::bgPanel);
+    gapSlider.setVisible(false);
+    addAndMakeVisible(gapSlider);
 
     repaint();
 }
@@ -64,6 +76,13 @@ void ControlsPanel::paint(juce::Graphics& g)
         g.setColour(Theme::iconPrimary);
         g.setFont(juce::FontOptions(13.0f));
         g.drawText(I18n::get("panel.size"), row2.removeFromLeft(labelW), juce::Justification::centredLeft);
+
+        inner.removeFromTop(rowGap);
+
+        auto row3 = inner.removeFromTop(rowH);
+        g.setColour(Theme::iconPrimary);
+        g.setFont(juce::FontOptions(13.0f));
+        g.drawText(I18n::get("panel.gap"), row3.removeFromLeft(labelW), juce::Justification::centredLeft);
     }
     else
     {
@@ -97,6 +116,11 @@ void ControlsPanel::resized()
 
     auto row2 = inner.removeFromTop(rowH);
     fontSizeSlider.setBounds(sliderX, row2.getY(), sliderW, rowH);
+
+    inner.removeFromTop(rowGap);
+
+    auto row3 = inner.removeFromTop(rowH);
+    gapSlider.setBounds(sliderX, row3.getY(), sliderW, rowH);
 }
 
 void ControlsPanel::mouseEnter(const juce::MouseEvent& e)
@@ -109,7 +133,7 @@ void ControlsPanel::mouseEnter(const juce::MouseEvent& e)
 void ControlsPanel::mouseExit(const juce::MouseEvent&)
 {
     // don't close while dragging a slider, or if cursor is still over children
-    if (linesSlider.isMouseOverOrDragging() || fontSizeSlider.isMouseOverOrDragging())
+    if (linesSlider.isMouseOverOrDragging() || fontSizeSlider.isMouseOverOrDragging() || gapSlider.isMouseOverOrDragging())
         return;
     if (isMouseOver(true))
         return;
@@ -128,6 +152,7 @@ void ControlsPanel::setHovered(bool h)
     hovered = h;
     linesSlider.setVisible(h);
     fontSizeSlider.setVisible(h);
+    gapSlider.setVisible(h);
     resized();
     repaint();
 }

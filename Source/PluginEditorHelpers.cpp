@@ -46,7 +46,7 @@ void SoLyPAudioProcessorEditor::initSlots() {
 
     int N = SettingsManager::visibleLines;
     auto bounds = getLocalBounds().reduced(40, 20);
-    float lh = SettingsManager::fontSize * 1.4f;
+    float lh = SettingsManager::fontSize * SettingsManager::lineSpacing;
 
     slots.resize(N);
     nextLineIndex = 0;
@@ -81,7 +81,7 @@ void SoLyPAudioProcessorEditor::setupPreLines() {
     if (N <= 0 || song.displayLines.isEmpty()) return;
 
     auto bounds = getLocalBounds().reduced(40, 20);
-    float lh = SettingsManager::fontSize * 1.4f;
+    float lh = SettingsManager::fontSize * SettingsManager::lineSpacing;
 
     useCenterY = false;
     int pre = std::min(SettingsManager::preLinesOnPause, N);
@@ -116,7 +116,7 @@ double SoLyPAudioProcessorEditor::getTimePerLine() {
 // базовая Y-позиция слота idx с учётом смещения offset (в долях lineHeight)
 double SoLyPAudioProcessorEditor::getSlotY(int idx, double offset) const {
     auto bounds = getLocalBounds().reduced(40, 20);
-    float lh = SettingsManager::fontSize * 1.4f;
+    float lh = SettingsManager::fontSize * SettingsManager::lineSpacing;
     int N = (int)slots.size();
     return bounds.getBottom() - (float)(N - idx) * lh - (float)(offset * lh);
 }
@@ -124,7 +124,7 @@ double SoLyPAudioProcessorEditor::getSlotY(int idx, double offset) const {
 // ── отрисовка ──────────────────────────────────────────────────────────────
 
 // проверка перед отрисовкой: пересобрать displayLines если изменился шрифт/ширина
-void SoLyPAudioProcessorEditor::ensureReady()
+void SoLyPAudioProcessorEditor::rebuildDisplayLines()
 {
     const auto& song = processor.getCurrentSong();
     auto bounds = getLocalBounds().reduced(40, 20);
@@ -170,7 +170,7 @@ void SoLyPAudioProcessorEditor::initPaint(juce::Graphics& g)
     if (slots.empty()) return;
 
     auto bounds = getLocalBounds().reduced(40, 20);
-    float lh = SettingsManager::fontSize * 1.4f;
+    float lh = SettingsManager::fontSize * SettingsManager::lineSpacing;
     int N = (int)slots.size();
 
     for (int i = 0; i < N; ++i)
@@ -194,7 +194,7 @@ void SoLyPAudioProcessorEditor::paintScroll(juce::Graphics& g)
     if (slots.empty()) return;
 
     auto bounds = getLocalBounds().reduced(40, 20);
-    float lh = SettingsManager::fontSize * 1.4f;
+    float lh = SettingsManager::fontSize * SettingsManager::lineSpacing;
     int N = (int)slots.size();
     int pre = std::min(SettingsManager::preLinesOnPause, N);
     auto state = processor.getTransportState();
@@ -226,7 +226,7 @@ void SoLyPAudioProcessorEditor::paintPauseText(juce::Graphics& g)
     if (state != SoLyPAudioProcessor::TransportState::Paused || !showPauseText) return;
 
     auto bounds = getLocalBounds().reduced(40, 20);
-    float lh = SettingsManager::fontSize * 1.4f;
+    float lh = SettingsManager::fontSize * SettingsManager::lineSpacing;
 
     float pauseY = (float)(bounds.getBottom() + pauseMsgY);
     if (pauseY < (float)bounds.getY()) pauseY = (float)bounds.getY();
@@ -449,8 +449,8 @@ void SoLyPAudioProcessorEditor::applySongLoad(Song& song, const juce::File& file
 // максимальное количество строк, которое влезает в окно при заданном шрифте
 int calcFittingLines(int height, float fontSize, const Song& song)
 {
-    float lineHeight = fontSize * 1.4f;
+    float lineHeight = fontSize * SettingsManager::lineSpacing;
     int maxTheoretical = static_cast<int>((height - 20) / lineHeight);
     int actualLines = song.displayLines.size();
-    return juce::jlimit(2, juce::jmin(12, maxTheoretical), actualLines);
+    return juce::jlimit(2, juce::jmin(20, maxTheoretical), actualLines);
 }

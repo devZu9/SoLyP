@@ -8,6 +8,7 @@ namespace SettingsManager
     inline int visibleLines = 6;
     inline float fontSize = 80.0f;
     inline int preLinesOnPause = 1;
+    inline float lineSpacing = 1.4f;
     inline juce::String pauseText;
 
     // language & theme

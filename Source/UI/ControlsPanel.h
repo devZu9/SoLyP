@@ -15,11 +15,12 @@ public:
 
     juce::Slider linesSlider;
     juce::Slider fontSizeSlider;
+    juce::Slider gapSlider;
 
     static constexpr int panelWidth = 260;
     static constexpr int iconSize = 36;
     static constexpr int gap = 8;
-    static constexpr int panelHeight = 110;
+    static constexpr int panelHeight = 140;
     static constexpr int compWidth = panelWidth + gap + iconSize;
     static constexpr int compHeight = panelHeight;
 

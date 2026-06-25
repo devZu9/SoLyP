@@ -8,6 +8,7 @@
     "button.cancel": "Отмена",
     "panel.lines": "Строки:",
     "panel.size": "Размер:",
+    "panel.gap": "Зазор:",
     "status.section": "Секция:",
     "status.bar": "Такт:",
     "status.playing": "ИГРАЕТ",

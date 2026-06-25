@@ -142,6 +142,7 @@ SoLyPAudioProcessorEditor::SoLyPAudioProcessorEditor(SoLyPAudioProcessor& p)
     controlsPanel = std::make_unique<ControlsPanel>();
     controlsPanel->linesSlider.addListener(this);
     controlsPanel->fontSizeSlider.addListener(this);
+    controlsPanel->gapSlider.addListener(this);
     controlsPanel->setBounds(getWidth() - ControlsPanel::compWidth - 8, 8,
                              ControlsPanel::compWidth, ControlsPanel::compHeight);
     addAndMakeVisible(controlsPanel.get());
@@ -267,7 +268,7 @@ void SoLyPAudioProcessorEditor::timerCallback(int timerId)
         }
         if (state == SoLyPAudioProcessor::TransportState::Paused && showPauseText)
         {
-            double lh = SettingsManager::fontSize * 1.4f;
+            double lh = SettingsManager::fontSize * SettingsManager::lineSpacing;
             pauseMsgY -= step * lh;
         }
         repaint();
@@ -343,7 +344,7 @@ void SoLyPAudioProcessorEditor::paint(juce::Graphics& g)
 {
     g.fillAll(Theme::bgMain);
     if (settingsMode || editMode) return;
-    ensureReady();
+    rebuildDisplayLines();
     auto state = processor.getTransportState();
     if (useCenterY && state == SoLyPAudioProcessor::TransportState::Stopped)
         initPaint(g);
@@ -382,6 +383,13 @@ void SoLyPAudioProcessorEditor::resized()
         textEditor->setBounds(area);
         return;
     }
+    auto st = processor.getTransportState();
+    if (st != SoLyPAudioProcessor::TransportState::Playing)
+    {
+        rebuildDisplayLines();
+        const auto& song = processor.getCurrentSong();
+        if (!song.textSong.isEmpty()) initSlots();
+    }
     repaint();
     if (leftPanel) leftPanel->setBounds(8, 8, leftPanel->getRequiredWidth(), LeftPanel::compHeight);
     if (controlsPanel) controlsPanel->setBounds(getWidth() - ControlsPanel::compWidth - 8, 8, ControlsPanel::compWidth, ControlsPanel::compHeight);
@@ -406,15 +414,48 @@ void SoLyPAudioProcessorEditor::buttonClicked(juce::Button* btn)
 
 void SoLyPAudioProcessorEditor::sliderValueChanged(juce::Slider* slider)
 {
-    if (controlsPanel) {
-        if (slider == &controlsPanel->linesSlider)
-            SettingsManager::visibleLines = static_cast<int>(controlsPanel->linesSlider.getValue());
-        else if (slider == &controlsPanel->fontSizeSlider) {
-            SettingsManager::fontSize = static_cast<float>(controlsPanel->fontSizeSlider.getValue());
-            updateLineCount();
-            SettingsManager::visibleLines = static_cast<int>(controlsPanel->linesSlider.getValue());
+    if (!controlsPanel) return;
+
+    auto bounds = getLocalBounds().reduced(40, 20);
+    float availH = (float)bounds.getHeight();
+    float lhMult = SettingsManager::lineSpacing;
+
+    if (slider == &controlsPanel->linesSlider)
+    {
+        int newLines = static_cast<int>(controlsPanel->linesSlider.getValue());
+        if (newLines > 0)
+        {
+            SettingsManager::visibleLines = newLines;
+            SettingsManager::fontSize = availH / ((float)newLines * lhMult);
+            controlsPanel->fontSizeSlider.setValue((double)SettingsManager::fontSize, juce::dontSendNotification);
         }
     }
+    else if (slider == &controlsPanel->fontSizeSlider)
+    {
+        float newSize = static_cast<float>(controlsPanel->fontSizeSlider.getValue());
+        if (newSize > 0.0f)
+        {
+            SettingsManager::fontSize = newSize;
+            int newLines = (int)(availH / (newSize * lhMult));
+            if (newLines < 1) newLines = 1;
+            SettingsManager::visibleLines = newLines;
+            controlsPanel->linesSlider.setValue((double)newLines, juce::dontSendNotification);
+        }
+    }
+    else if (slider == &controlsPanel->gapSlider)
+    {
+        SettingsManager::lineSpacing = (float)controlsPanel->gapSlider.getValue();
+        int newLines = (int)(availH / (SettingsManager::fontSize * SettingsManager::lineSpacing));
+        if (newLines < 1) newLines = 1;
+        SettingsManager::visibleLines = newLines;
+        controlsPanel->linesSlider.setValue((double)newLines, juce::dontSendNotification);
+    }
+
+    updateLineCount();
+    rebuildDisplayLines();
+    const auto& song = processor.getCurrentSong();
+    if (!song.textSong.isEmpty())
+        initSlots();
     SettingsManager::save();
     repaint();
 }

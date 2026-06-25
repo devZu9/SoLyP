@@ -42,7 +42,7 @@ private:
     void paintCountdown(juce::Graphics& g);
     void paintError(juce::Graphics& g);
     void paintCursor(juce::Graphics& g);
-    void ensureReady();
+    void rebuildDisplayLines();
     void initView(juce::Graphics& g);
     void resetCursorState();
     void updateLineCount();
