@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.24)
-project(SoLyP VERSION 1.1.6 LANGUAGES CXX)
+project(SoLyP VERSION 1.1.7 LANGUAGES CXX)
 
 cmake_policy(SET CMP0169 OLD)
 
@@ -17,7 +17,9 @@ FetchContent_MakeAvailable(JUCE)
 set(SoLyP_SOURCES
     Source/PluginProcessor.cpp
     Source/PluginEditor.cpp
-    Source/PluginEditorHelpers.cpp
+    Source/UI/Editor/EditorCallbacks.cpp
+    Source/UI/Editor/EditorActions.cpp
+    Source/UI/Editor/EditorHelpers.cpp
     Source/Data/Song.cpp
     Source/Data/SettingsManager.cpp
     Source/Data/I18n.cpp

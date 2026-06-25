@@ -29,9 +29,13 @@ public:
     bool isTextModified() const { return pendingChanges; }
 
 private:
-    enum TimerId { ScrollId = 1, PauseMsgId = 2, CountdownId = 3, CursorId = 4 };
+    enum TimerId { ScrollId = 1, PauseId = 2, CountdownId = 3, CursorId = 4 };
 
     void timerCallback(int timerId) override;
+    void scrollCallback();
+    void pauseCallback();
+    void countdownCallback();
+    void cursorCallback();
     void buttonClicked(juce::Button*) override;
     void sliderValueChanged(juce::Slider*) override;
 

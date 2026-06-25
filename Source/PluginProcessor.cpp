@@ -111,7 +111,8 @@ void SoLyPAudioProcessor::enterStop()
 
 void SoLyPAudioProcessor::enterCountdown()
 {
-    if (transportState == TransportState::Countdown) return;
+    if (transportState == TransportState::Playing
+        || transportState == TransportState::Countdown) return;
     transportState = TransportState::Countdown;
     if (onStateChanged) onStateChanged();
 }
