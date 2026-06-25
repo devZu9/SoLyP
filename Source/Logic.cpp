@@ -1,5 +1,5 @@
-#include "PluginProcessor.h"
-#include "PluginEditor.h"
+#include "Logic.h"
+#include "Display.h"
 #include "Data/SettingsManager.h"
 
 namespace

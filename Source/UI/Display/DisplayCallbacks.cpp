@@ -1,7 +1,5 @@
-#include "../../PluginEditor.h"
-#include "../../PluginEditorHelpers.h"
+#include "../../Display.h"
 #include "../../Data/SettingsManager.h"
-#include "../../UI/Theme.h"
 
 void SoLyPAudioProcessorEditor::timerCallback(int timerId)
 {

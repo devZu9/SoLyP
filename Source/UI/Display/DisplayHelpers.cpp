@@ -1,6 +1,6 @@
-#include "PluginEditor.h"
-#include "PluginEditorHelpers.h"
-#include "UI/Theme.h"
+#include "../../Display.h"
+
+#include "../Theme.h"
 #include "Data/SettingsManager.h"
 #include "Data/I18n.h"
 

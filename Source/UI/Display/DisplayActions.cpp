@@ -1,5 +1,4 @@
-#include "../../PluginEditor.h"
-#include "../../PluginEditorHelpers.h"
+#include "../../Display.h"
 #include "../../Data/SettingsManager.h"
 #include "../../Data/I18n.h"
 #include "../Theme.h"

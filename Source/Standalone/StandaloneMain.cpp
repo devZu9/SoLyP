@@ -1,7 +1,7 @@
 #include <JuceHeader.h>
 #include <juce_audio_plugin_client/Standalone/juce_StandaloneFilterWindow.h>
-#include "../PluginEditor.h"
-#include "../PluginProcessor.h"
+#include "../Display.h"
+#include "../Logic.h"
 #include "../Data/SettingsManager.h"
 #include "../Data/I18n.h"
 #include "../UI/Theme.h"

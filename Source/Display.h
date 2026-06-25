@@ -1,8 +1,9 @@
 #pragma once
 
 #include <JuceHeader.h>
-#include "PluginProcessor.h"
+#include "Logic.h"
 #include "Slot.h"
+#include "UI/Display/DisplayHelpers.h"
 #include "UI/ControlsPanel.h"
 #include "UI/LeftPanel.h"
 

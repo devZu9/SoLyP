@@ -15,11 +15,11 @@ FetchContent_Declare(JUCE
 FetchContent_MakeAvailable(JUCE)
 
 set(SoLyP_SOURCES
-    Source/PluginProcessor.cpp
-    Source/PluginEditor.cpp
-    Source/UI/Editor/EditorCallbacks.cpp
-    Source/UI/Editor/EditorActions.cpp
-    Source/UI/Editor/EditorHelpers.cpp
+    Source/Logic.cpp
+    Source/Display.cpp
+    Source/UI/Display/DisplayCallbacks.cpp
+    Source/UI/Display/DisplayActions.cpp
+    Source/UI/Display/DisplayHelpers.cpp
     Source/Data/Song.cpp
     Source/Data/SettingsManager.cpp
     Source/Data/I18n.cpp
