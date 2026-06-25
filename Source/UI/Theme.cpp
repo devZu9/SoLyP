@@ -47,9 +47,17 @@ void Theme::loadFromFile(const juce::File& file)
     LOAD_COLOUR(editorBg, juce::Colour(0xFF13294B))
     LOAD_COLOUR(editorText, juce::Colour(0xFFE0EDFF))
     LOAD_COLOUR(editorCaret, juce::Colour(0xFFE0EDFF))
-    LOAD_COLOUR(editorHighlight, juce::Colour(0xFF1A2A4A))
+    LOAD_COLOUR(editorHighlight, juce::Colour(0xFF3A5A8A))
     LOAD_COLOUR(editorHighlightedText, juce::Colour(0xFFFFFFFF))
     LOAD_COLOUR(editorOutline, juce::Colour(0x00000000))
+
+    if (obj->hasProperty("baseFontSize"))
+        baseFontSize = (float)(double)obj->getProperty("baseFontSize");
+    if (obj->hasProperty("tooltipSize"))
+        tooltipSize = (float)(double)obj->getProperty("tooltipSize");
+    LOAD_COLOUR(tooltipBg,      juce::Colour(0xFF1A1A2E))
+    LOAD_COLOUR(tooltipText,    juce::Colour(0xFFFFCC00))
+    LOAD_COLOUR(tooltipOutline, juce::Colour(0xFF4A6FA5))
 }
 
 void Theme::ensureDefaults()
@@ -83,7 +91,13 @@ void Theme::ensureDefaults()
     editorBg = juce::Colour(0xFF13294B);
     editorText = juce::Colour(0xFFE0EDFF);
     editorCaret = juce::Colour(0xFFE0EDFF);
-    editorHighlight = juce::Colour(0xFF1A2A4A);
+    editorHighlight = juce::Colour(0xFF3A5A8A);
     editorHighlightedText = juce::Colour(0xFFFFFFFF);
     editorOutline = juce::Colour(0x00000000);
+
+    baseFontSize      = 12.0f;
+    tooltipSize       = 1.0f;
+    tooltipBg         = juce::Colour(0xFF1A1A2E);
+    tooltipText       = juce::Colour(0xFFFFCC00);
+    tooltipOutline    = juce::Colour(0xFF4A6FA5);
 }

@@ -31,7 +31,7 @@ namespace SettingsManager
     inline bool manualBpmEnabled = false;
     inline float manualBpmValue = 120.0f;
     inline int timeSignature = 4;
-    inline float linesPerBar = 1.0f;
+    inline float barsPerLine = 1.0f;
 
     // startup guard
     inline bool noStartSave = true;

@@ -47,7 +47,13 @@ void SettingsManager::load()
     manualBpmEnabled   = g("manualBpmEnabled", false);
     manualBpmValue     = g("manualBpmValue", 120.0f);
     timeSignature      = g("timeSignature", 4);
-    linesPerBar        = g("linesPerBar", 1.0f);
+    barsPerLine        = g("barsPerLine", 1.0f);
+    if (!obj->hasProperty("barsPerLine") && obj->hasProperty("linesPerBar"))
+    {
+        double oldVal = obj->getProperty("linesPerBar");
+        if (oldVal > 0.0)
+            barsPerLine = (float)(1.0 / oldVal);
+    }
     windowWidth        = g("windowWidth", 0);
     windowHeight       = g("windowHeight", 0);
     windowX            = g("windowX", 0);
@@ -86,7 +92,7 @@ void SettingsManager::save()
     obj->setProperty("manualBpmEnabled",   manualBpmEnabled);
     obj->setProperty("manualBpmValue",     manualBpmValue);
     obj->setProperty("timeSignature",      timeSignature);
-    obj->setProperty("linesPerBar",        linesPerBar);
+    obj->setProperty("barsPerLine",        barsPerLine);
     obj->setProperty("windowWidth",        windowWidth);
     obj->setProperty("windowHeight",       windowHeight);
     obj->setProperty("windowX",            windowX);

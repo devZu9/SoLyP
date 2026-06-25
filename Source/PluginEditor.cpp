@@ -43,6 +43,45 @@ SoLyPAudioProcessorEditor::SoLyPAudioProcessorEditor(SoLyPAudioProcessor& p)
     I18n::setLanguage(SettingsManager::language);
     ensureSongsDir();
 
+    // настройка тултипов
+    class SoLyPTooltipLAF : public juce::LookAndFeel_V4 {
+    public:
+        void drawTooltip(juce::Graphics& g, const juce::String& text, int width, int height) override
+        {
+            float corner = 5.0f;
+            g.setColour(Theme::tooltipBg);
+            g.fillRoundedRectangle(0.0f, 0.0f, (float)width, (float)height, corner);
+            g.setColour(Theme::tooltipOutline);
+            g.drawRoundedRectangle(0.5f, 0.5f, (float)width - 1.0f, (float)height - 1.0f, corner, 1.0f);
+            g.setColour(Theme::tooltipText);
+            g.setFont(juce::Font(juce::FontOptions(Theme::baseFontSize * Theme::tooltipSize)));
+            g.drawFittedText(text, 5, 0, width - 10, height, juce::Justification::centred, 5);
+        }
+
+        juce::Rectangle<int> getTooltipBounds(const juce::String& tipText, juce::Point<int> screenPos,
+                                               juce::Rectangle<int> parentArea) override
+        {
+            juce::Font f(juce::FontOptions(Theme::baseFontSize * Theme::tooltipSize));
+            auto lines = juce::StringArray::fromLines(tipText);
+            int maxLineW = 0;
+            for (auto& ln : lines)
+                maxLineW = juce::jmax(maxLineW, f.getStringWidth(ln));
+            int textW = juce::jmin(maxLineW + 20, parentArea.getWidth() - 20);
+            int lineCount = juce::jmax(1, lines.size());
+            int textH = (int)(f.getHeight() * (float)lineCount * 1.3f) + 10;
+            int x = screenPos.x + 12;
+            int y = screenPos.y + 12;
+            if (x + textW > parentArea.getRight()) x = parentArea.getRight() - textW - 4;
+            if (y + textH > parentArea.getBottom()) y = screenPos.y - textH - 4;
+            return { x, y, textW, textH };
+        }
+    };
+    tooltipLAF = std::make_unique<SoLyPTooltipLAF>();
+    setLookAndFeel(tooltipLAF.get());
+    tooltipWindow.setColour(juce::TooltipWindow::backgroundColourId, Theme::tooltipBg);
+    tooltipWindow.setColour(juce::TooltipWindow::textColourId, Theme::tooltipText);
+    tooltipWindow.setColour(juce::TooltipWindow::outlineColourId, Theme::tooltipOutline);
+
     setSize(800, 500);
     setResizable(true, false);
     setConstrainer(nullptr);
@@ -362,24 +401,34 @@ void SoLyPAudioProcessorEditor::resized()
 {
     if (settingsMode) {
         auto area = getLocalBounds().reduced(10);
-        auto buttonBar = area.removeFromTop(40);
-        int gs = 28;
-        backButton.setBounds(buttonBar.removeFromLeft(gs).withSizeKeepingCentre(gs, gs));
+        auto buttonBar = area.removeFromTop(38);
+        {
+            juce::FlexBox fb;
+            fb.flexDirection = juce::FlexBox::Direction::row;
+            fb.items.add(juce::FlexItem(backButton).withWidth(28.0f));
+            fb.performLayout(buttonBar.toFloat());
+        }
         if (settingsComponent) settingsComponent->setBounds(area);
         return;
     }
     if (editMode) {
         auto area = getLocalBounds().reduced(10);
-        auto buttonBar = area.removeFromTop(40);
-        int gs = 28, gap = 8;
-        backButton.setBounds(buttonBar.removeFromLeft(gs).withSizeKeepingCentre(gs, gs));
-        buttonBar.removeFromLeft(gap);
-        editModeLoadButton.setBounds(buttonBar.removeFromLeft(gs).withSizeKeepingCentre(gs, gs));
-        buttonBar.removeFromLeft(gap);
-        editModeNewButton.setBounds(buttonBar.removeFromLeft(gs).withSizeKeepingCentre(gs, gs));
-        buttonBar.removeFromLeft(gap);
-        saveButton.setBounds(buttonBar.removeFromLeft(gs).withSizeKeepingCentre(gs, gs));
-        settingsEditBtn.setBounds(buttonBar.getRight() - gs - 4, buttonBar.getY() + (buttonBar.getHeight() - gs) / 2, gs, gs);
+        auto buttonBar = area.removeFromTop(38);
+        {
+            juce::FlexBox fb;
+            fb.flexDirection = juce::FlexBox::Direction::row;
+            float w = 28.0f;
+            fb.items.add(juce::FlexItem(backButton).withWidth(w));
+            fb.items.add(juce::FlexItem(8.0f, 1.0f));
+            fb.items.add(juce::FlexItem(editModeLoadButton).withWidth(w));
+            fb.items.add(juce::FlexItem(8.0f, 1.0f));
+            fb.items.add(juce::FlexItem(editModeNewButton).withWidth(w));
+            fb.items.add(juce::FlexItem(8.0f, 1.0f));
+            fb.items.add(juce::FlexItem(saveButton).withWidth(w));
+            fb.items.add(juce::FlexItem().withFlex(1.0f));
+            fb.items.add(juce::FlexItem(settingsEditBtn).withWidth(w));
+            fb.performLayout(buttonBar.toFloat());
+        }
         textEditor->setBounds(area);
         return;
     }

@@ -37,6 +37,12 @@ namespace Theme
     inline juce::Colour editorHighlightedText;
     inline juce::Colour editorOutline;
 
+    inline float baseFontSize = 12.0f;
+    inline float tooltipSize = 1.0f;
+    inline juce::Colour tooltipBg;
+    inline juce::Colour tooltipText;
+    inline juce::Colour tooltipOutline;
+
     void loadFromFile(const juce::File& file);
     void ensureDefaults();
 }

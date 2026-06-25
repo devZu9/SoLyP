@@ -12,7 +12,7 @@ public:
     juce::ComboBox* addCombo(const juce::String& labelKey);
     juce::Slider*   addSlider(const juce::String& labelKey, double min, double max, double step);
     juce::ToggleButton* addToggle(const juce::String& labelKey);
-    void addToggleWithInfo(const juce::String& labelKey, juce::ToggleButton*& outToggle, juce::DrawableButton*& outInfo);
+    juce::DrawableButton* addInfoIcon();
     juce::TextButton* addButton(const juce::String& labelKey);
     juce::TextEditor* addEditor(const juce::String& labelKey, int height = 60);
     void addRadioPair(const juce::String& labelKey, const juce::String& opt1, const juce::String& opt2,
@@ -35,4 +35,5 @@ private:
         int rowHeight = 28;
     };
     std::vector<Row> rows;
+    std::unique_ptr<juce::LookAndFeel> editorBorderLAF;
 };

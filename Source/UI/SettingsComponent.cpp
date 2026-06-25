@@ -139,12 +139,10 @@ SettingsComponent::SettingsComponent(std::function<void()> onLangChanged)
 
         card->addSeparator();
 
-        juce::ToggleButton* aotTg = nullptr;
-        juce::DrawableButton* aotInfo = nullptr;
-        card->addToggleWithInfo(I18n::get("settings.alwaysOnTop"), aotTg, aotInfo);
+        juce::ToggleButton* aotTg = card->addToggle(I18n::get("settings.alwaysOnTop"));
         aotTg->setToggleState(SettingsManager::alwaysOnTop, juce::dontSendNotification);
+        juce::DrawableButton* aotInfo = card->addInfoIcon();
 
-        // info icon
         auto svg = juce::String(Icons::question).replace("#000000", "#" + Theme::iconPrimary.toDisplayString(false));
         auto xml = juce::XmlDocument::parse(svg);
         if (xml)
@@ -180,13 +178,25 @@ SettingsComponent::SettingsComponent(std::function<void()> onLangChanged)
             SettingsManager::save();
         };
 
-        auto* linesPerBarSl = card->addSlider(I18n::get("settings.linesPerBar"), 0.5, 4.0, 0.5);
-        linesPerBarSl->setValue((double)SettingsManager::linesPerBar);
+        auto* linesPerBarSl = card->addSlider(I18n::get("settings.barsPerLine"), 1.0, 4.0, 1.0);
+        linesPerBarSl->setValue((double)SettingsManager::barsPerLine);
         linesPerBarSl->setDoubleClickReturnValue(true, 1.0);
         linesPerBarSl->onValueChange = [linesPerBarSl] {
-            SettingsManager::linesPerBar = (float)linesPerBarSl->getValue();
+            SettingsManager::barsPerLine = (float)linesPerBarSl->getValue();
             SettingsManager::save();
         };
+        {
+            auto* info = card->addInfoIcon();
+            if (info) {
+                auto svg = juce::String(Icons::question).replace("#000000", "#" + Theme::iconPrimary.toDisplayString(false));
+                auto xml = juce::XmlDocument::parse(svg);
+                if (xml) {
+                    auto drawable = juce::Drawable::createFromSVG(*xml);
+                    info->setImages(drawable.get());
+                    info->setTooltip(I18n::get("settings.barsPerLineTip"));
+                }
+            }
+        }
 
         card->addSeparator();
         auto* pauseEditor = card->addEditor(I18n::get("settings.pauseText"), 60);

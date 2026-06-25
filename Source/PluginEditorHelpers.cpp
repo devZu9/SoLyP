@@ -110,7 +110,7 @@ double SoLyPAudioProcessorEditor::getTimePerLine() {
     if (parts <= 0) parts = 1;
     double barDuration = 60.0 / bpm * (double)SettingsManager::timeSignature;
     if (barDuration <= 0.0) return -1.0;
-    return barDuration / ((double)SettingsManager::linesPerBar * (double)parts);
+    return barDuration * (double)SettingsManager::barsPerLine / (double)parts;
 }
 
 // базовая Y-позиция слота idx с учётом смещения offset (в долях lineHeight)

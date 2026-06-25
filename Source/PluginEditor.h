@@ -109,6 +109,7 @@ private:
     bool pendingChanges = false;
     juce::String originalText;
     juce::TooltipWindow tooltipWindow{ this, 500 };
+    std::unique_ptr<juce::LookAndFeel> tooltipLAF;
 
     std::unique_ptr<juce::Drawable> cursorTri, cursorSq;
     float cursorAngle = 0.0f;
