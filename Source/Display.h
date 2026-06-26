@@ -82,7 +82,10 @@ private:
     // pause
     bool showPauseText = false;
     double pauseMsgY = 0.0;
+    juce::Rectangle<int> lyricsViewArea;
     double realLineHeight = 0.0;
+    double entryY = 0.0;
+    double topLimit = 0.0;
 
     // countdown
     int countdownPhase = 0;

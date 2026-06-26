@@ -45,7 +45,6 @@ void SoLyPAudioProcessorEditor::initSlots() {
     if (song.displayLines.isEmpty()) { slots.clear(); return; }
 
     int N = SettingsManager::visibleLines;
-    auto bounds = getLocalBounds().reduced(40, 20);
     float lineHeight = (float)realLineHeight;
 
     slots.resize(N);
@@ -55,7 +54,7 @@ void SoLyPAudioProcessorEditor::initSlots() {
     int linesAvail = song.displayLines.size() - nextLineIndex;
     int linesToShow = std::min(N, linesAvail);
     float totalH = linesToShow * lineHeight;
-    float startY = bounds.getY() + (bounds.getHeight() - totalH) / 2.0f;
+    float startY = lyricsViewArea.getY() + (lyricsViewArea.getHeight() - totalH) / 2.0f;
     for (int i = 0; i < N; ++i) {
         int idx = nextLineIndex + i;
         if (i < linesToShow && idx < song.displayLines.size()) {
@@ -67,10 +66,14 @@ void SoLyPAudioProcessorEditor::initSlots() {
         }
     }
 
-    if (processor.getTransportState() != SoLyPAudioProcessor::TransportState::Stopped) {
+    if (linesToShow > 0)
+        entryY = slots[linesToShow - 1].y;
+    topLimit = startY;
+    nextLineIndex = linesToShow;
+
+    if (processor.getTransportState() != SoLyPAudioProcessor::TransportState::Stopped)
         useCenterY = false;
-        nextLineIndex = std::min(SettingsManager::preLinesOnPause, N);
-    }
+
     lastScrollTime = juce::Time::getMillisecondCounterHiRes();
 }
 
@@ -80,7 +83,6 @@ void SoLyPAudioProcessorEditor::setupPreLines() {
     int N = (int)slots.size();
     if (N <= 0 || song.displayLines.isEmpty()) return;
 
-    auto bounds = getLocalBounds().reduced(40, 20);
     float lineHeight = (float)realLineHeight;
 
     useCenterY = false;
@@ -91,7 +93,7 @@ void SoLyPAudioProcessorEditor::setupPreLines() {
             slots[i].text = song.displayLines[idx].text;
         else
             slots[i].text = {};
-        slots[i].y = bounds.getBottom() - (float)(N - i) * lineHeight;
+        slots[i].y = entryY - (float)(N - 1 - i) * lineHeight;
     }
 }
 
@@ -119,8 +121,7 @@ double SoLyPAudioProcessorEditor::getTimePerLine() {
 void SoLyPAudioProcessorEditor::rebuildDisplayLines()
 {
     const auto& song = processor.getCurrentSong();
-    auto bounds = getLocalBounds().reduced(40, 20);
-    float availW = (float)bounds.getWidth();
+    float availW = (float)lyricsViewArea.getWidth();
     auto state = processor.getTransportState();
 
     bool needRebuild = song.displayLines.isEmpty()
@@ -161,7 +162,6 @@ void SoLyPAudioProcessorEditor::initPaint(juce::Graphics& g)
     if (song.textSong.isEmpty()) { initView(g); return; }
     if (slots.empty()) return;
 
-    auto bounds = getLocalBounds().reduced(40, 20);
     float lineHeight = (float)realLineHeight;
     int N = (int)slots.size();
 
@@ -169,11 +169,11 @@ void SoLyPAudioProcessorEditor::initPaint(juce::Graphics& g)
     {
         if (slots[i].text.isEmpty()) continue;
         float y = (float)slots[i].y;
-        if (y + lineHeight < (float)bounds.getY() || y > (float)bounds.getBottom()) continue;
+        if (y + lineHeight < (float)lyricsViewArea.getY() || y > (float)lyricsViewArea.getBottom()) continue;
         g.setColour(Theme::textOnButton);
         g.setFont(juce::FontOptions(SettingsManager::fontSize));
         g.drawText(slots[i].text,
-            juce::Rectangle<float>((float)bounds.getX(), y, (float)bounds.getWidth(), lineHeight),
+            juce::Rectangle<float>((float)lyricsViewArea.getX(), y, (float)lyricsViewArea.getWidth(), lineHeight),
             juce::Justification::centred, false);
     }
 }
@@ -185,7 +185,6 @@ void SoLyPAudioProcessorEditor::paintScroll(juce::Graphics& g)
     if (song.textSong.isEmpty()) { initView(g); return; }
     if (slots.empty()) return;
 
-    auto bounds = getLocalBounds().reduced(40, 20);
     float lineHeight = (float)realLineHeight;
     int N = (int)slots.size();
 
@@ -194,12 +193,12 @@ void SoLyPAudioProcessorEditor::paintScroll(juce::Graphics& g)
         if (slots[i].text.isEmpty()) continue;
 
         float y = (float)slots[i].y;
-        if (y + lineHeight < (float)bounds.getY() || y > (float)bounds.getBottom()) continue;
+        if (y + lineHeight < (float)lyricsViewArea.getY() || y > (float)lyricsViewArea.getBottom()) continue;
 
         g.setColour(Theme::textOnButton);
         g.setFont(juce::FontOptions(SettingsManager::fontSize));
         g.drawText(slots[i].text,
-            juce::Rectangle<float>((float)bounds.getX(), y, (float)bounds.getWidth(), lineHeight),
+            juce::Rectangle<float>((float)lyricsViewArea.getX(), y, (float)lyricsViewArea.getWidth(), lineHeight),
             juce::Justification::centred, false);
     }
 }
@@ -220,8 +219,7 @@ void SoLyPAudioProcessorEditor::paintPauseText(juce::Graphics& g)
     auto lines = juce::StringArray::fromLines(msgText);
     if (lines.isEmpty()) return;
 
-    auto bounds = getLocalBounds().reduced(40, 20);
-    float availW = (float)bounds.getWidth() - 40.0f; // gap 20px с каждой стороны
+    float availW = (float)lyricsViewArea.getWidth() - 40.0f; // gap 20px с каждой стороны
 
     // авто-подбор размера шрифта: вписать самую широкую строку в availW
     float refSize = 14.0f;
@@ -241,9 +239,9 @@ void SoLyPAudioProcessorEditor::paintPauseText(juce::Graphics& g)
     float lineHeight = pauseFontSize * 0.6f * (1.0f + SettingsManager::lineSpacing);
     float totalH = (float)lines.size() * lineHeight;
 
-    float pauseY = (float)(bounds.getBottom() + pauseMsgY);
-    if (pauseY < (float)bounds.getY()) pauseY = (float)bounds.getY();
-    if (pauseY + totalH > (float)bounds.getBottom()) return;
+    float pauseY = (float)(lyricsViewArea.getBottom() + pauseMsgY);
+    if (pauseY < (float)lyricsViewArea.getY()) pauseY = (float)lyricsViewArea.getY();
+    if (pauseY + totalH > (float)lyricsViewArea.getBottom()) return;
 
     g.setColour(Theme::textPause);
     g.setFont(juce::FontOptions(pauseFontSize));
@@ -252,7 +250,7 @@ void SoLyPAudioProcessorEditor::paintPauseText(juce::Graphics& g)
     {
         float y = pauseY + (float)i * lineHeight;
         g.drawText(lines[i],
-            juce::Rectangle<float>((float)bounds.getX(), y, (float)bounds.getWidth(), lineHeight),
+            juce::Rectangle<float>((float)lyricsViewArea.getX(), y, (float)lyricsViewArea.getWidth(), lineHeight),
             juce::Justification::centred, false);
     }
 }

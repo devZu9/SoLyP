@@ -48,9 +48,6 @@ void SoLyPAudioProcessorEditor::sliderValueChanged(juce::Slider* slider)
 {
     if (!controlsPanel) return;
 
-    auto bounds = getLocalBounds().reduced(40, 20);
-    float maxAvailableHeight = (float)bounds.getHeight();
-
     if (slider == &controlsPanel->linesSlider)
     {
         int newLines = static_cast<int>(controlsPanel->linesSlider.getValue());
@@ -58,7 +55,7 @@ void SoLyPAudioProcessorEditor::sliderValueChanged(juce::Slider* slider)
         {
             SettingsManager::visibleLines = newLines;
             float mult = 0.6f * (1.0f + SettingsManager::lineSpacing);
-            SettingsManager::fontSize = std::floor(maxAvailableHeight / ((float)newLines * mult));
+            SettingsManager::fontSize = std::floor((float)lyricsViewArea.getHeight() / ((float)newLines * mult));
             controlsPanel->fontSizeSlider.setValue((double)SettingsManager::fontSize, juce::dontSendNotification);
         }
     }
@@ -67,7 +64,7 @@ void SoLyPAudioProcessorEditor::sliderValueChanged(juce::Slider* slider)
         if (controlsPanel->fontSizeSlider.getValue() > 0.0f)
         {
             SettingsManager::fontSize = std::round((float)controlsPanel->fontSizeSlider.getValue());
-            int newLines = (int)(maxAvailableHeight / getRealLineHeight());
+            int newLines = (int)((float)lyricsViewArea.getHeight() / getRealLineHeight());
             if (newLines < 1) newLines = 1;
             SettingsManager::visibleLines = newLines;
             controlsPanel->linesSlider.setValue((double)newLines, juce::dontSendNotification);
@@ -77,7 +74,7 @@ void SoLyPAudioProcessorEditor::sliderValueChanged(juce::Slider* slider)
     {
         float raw = (float)controlsPanel->gapSlider.getValue();
         SettingsManager::lineSpacing = std::round(raw * 20.0f) / 20.0f;
-        int newLines = (int)(maxAvailableHeight / getRealLineHeight());
+        int newLines = (int)((float)lyricsViewArea.getHeight() / getRealLineHeight());
         if (newLines < 1) newLines = 1;
         SettingsManager::visibleLines = newLines;
         controlsPanel->linesSlider.setValue((double)newLines, juce::dontSendNotification);

@@ -89,6 +89,8 @@ SoLyPAudioProcessorEditor::SoLyPAudioProcessorEditor(SoLyPAudioProcessor& p)
     if (SettingsManager::windowWidth > 0 && SettingsManager::windowHeight > 0)
         setSize(SettingsManager::windowWidth, SettingsManager::windowHeight);
 
+    lyricsViewArea = getLocalBounds().reduced(40, 20);
+
     juce::MessageManager::callAsync([this] {
         if (auto* top = getTopLevelComponent())
         {
@@ -210,14 +212,6 @@ SoLyPAudioProcessorEditor::SoLyPAudioProcessorEditor(SoLyPAudioProcessor& p)
                     showPauseText = false;
     lastScrollTime = juce::Time::getMillisecondCounterHiRes();
     realLineHeight = getRealLineHeight();
-                    if (lastState == SoLyPAudioProcessor::TransportState::Stopped
-                        && !processor.getCurrentSong().textSong.isEmpty())
-                    {
-                        slots.assign(slots.size(), Slot{});
-                        nextLineIndex = 0;
-                        setupPreLines();
-                        nextLineIndex = std::min(SettingsManager::preLinesOnPause, (int)slots.size());
-                    }
                     stopTimer(TimerPreLines);
                     stopTimer(TimerPause);
                     startTimer(TimerScroll, 50);
@@ -342,6 +336,7 @@ void SoLyPAudioProcessorEditor::resized()
         return;
     }
     auto st = processor.getTransportState();
+    lyricsViewArea = getLocalBounds().reduced(40, 20);
     if (st != SoLyPAudioProcessor::TransportState::Playing)
     {
         rebuildDisplayLines();

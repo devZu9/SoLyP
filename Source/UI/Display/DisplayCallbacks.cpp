@@ -48,7 +48,7 @@ void SoLyPAudioProcessorEditor::scrollCallback()
     for (auto& s : slots)
         s.y -= stepPerFramePx;
 
-    while (!slots.empty() && slots[0].y + lineHeight < 0.0)
+    while (!slots.empty() && slots[0].y + lineHeight < topLimit)
     {
         const auto& song = processor.getCurrentSong();
         if (song.displayLines.isEmpty()) { repaint(); return; }
@@ -134,10 +134,9 @@ void SoLyPAudioProcessorEditor::pauseCallback()
     double stepPerFramePx = actualTimePerFrameMs / pauseMsgSpeed * lineHeight;
     pauseMsgY -= stepPerFramePx;
 
-    auto bounds = getLocalBounds().reduced(40, 20);
-    if (bounds.getBottom() + pauseMsgY < (float)bounds.getY())
+    if (lyricsViewArea.getBottom() + pauseMsgY < (float)lyricsViewArea.getY())
     {
-        pauseMsgY = (float)bounds.getY() - (float)bounds.getBottom();
+        pauseMsgY = (float)lyricsViewArea.getY() - (float)lyricsViewArea.getBottom();
         stopTimer(TimerPause);
     }
 
