@@ -84,8 +84,10 @@ private:
     double pauseMsgY = 0.0;
     juce::Rectangle<int> lyricsViewArea;
     double realLineHeight = 0.0;
-    double entryY = 0.0;
+    double topYlastLine = 0.0;
     double topLimit = 0.0;
+    juce::Image fastImage;
+    double fastImageY = 0.0;
 
     // countdown
     int countdownPhase = 0;
@@ -93,7 +95,6 @@ private:
     double countdownPhaseDuration = 0.0;
 
     int pauseShiftCount = 0;
-    double preScroll = 0.0;
     double lastPreLineTime = 0.0;
     double lastPauseTime = 0.0;
     double pauseMsgSpeed = 0.0;

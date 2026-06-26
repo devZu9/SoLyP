@@ -36,10 +36,12 @@ void SoLyPAudioProcessorEditor::scrollCallback()
 
     if (state == SoLyPAudioProcessor::TransportState::Paused)
     {
-        int pre = std::min(SettingsManager::preLinesOnPause, N);
-        // Только верхние слоты (старый текст) — 5×, shift не нужен
-        for (int i = 0; i < N - pre; ++i)
-            slots[i].y -= stepPerFramePx;
+        if (fastImage.isValid())
+        {
+            fastImageY -= stepPerFramePx;
+            if (fastImageY + (double)fastImage.getHeight() < 0.0)
+                fastImage = {};
+        }
         repaint();
         return;
     }
@@ -48,7 +50,7 @@ void SoLyPAudioProcessorEditor::scrollCallback()
     for (auto& s : slots)
         s.y -= stepPerFramePx;
 
-    while (!slots.empty() && slots[0].y + lineHeight < topLimit)
+    while (!slots.empty() && slots[N - 1].y + lineHeight < topYlastLine)
     {
         const auto& song = processor.getCurrentSong();
         if (song.displayLines.isEmpty()) { repaint(); return; }
@@ -81,26 +83,19 @@ void SoLyPAudioProcessorEditor::preLinesCallback()
     if (timePerLine <= 0.0) { repaint(); return; }
 
     double step = actualTimePerFrameMs / (timePerLine * 1000.0);
-    int N = (int)slots.size();
-    int pre = std::min(SettingsManager::preLinesOnPause, N);
-    int preStart = N - pre;
     double lineHeight = realLineHeight;
-
-    // Движение предстрок
     double stepPerFramePx = step * lineHeight;
-    for (int i = preStart; i < N; ++i)
-        slots[i].y -= stepPerFramePx;
+    int N = (int)slots.size();
 
-    // Накопление сдвига
-    preScroll += step;
+    for (auto& s : slots)
+        s.y -= stepPerFramePx;
+
     const auto& song = processor.getCurrentSong();
 
-    while (preScroll >= 1.0 && pauseShiftCount < pre)
+    if (!slots.empty()
+        && slots[N - 1].y + lineHeight < topYlastLine)
     {
-        preScroll -= 1.0;
-
-        // Сдвиг предстрок наверх
-        for (int i = preStart; i < N - 1; ++i)
+        for (int i = 0; i < N - 1; ++i)
         {
             slots[i].text = slots[i + 1].text;
             slots[i].y = slots[i + 1].y;
@@ -110,13 +105,10 @@ void SoLyPAudioProcessorEditor::preLinesCallback()
             slots[N - 1].text = song.displayLines[nextLineIndex++].text;
             slots[N - 1].y = slots[N - 2].y + lineHeight;
         }
-        else
-            processor.switchStop();
-
-        pauseShiftCount++;
+        pauseShiftCount = 1;
     }
 
-    if (pauseShiftCount >= pre)
+    if (pauseShiftCount >= 1 && slots[N - 1].y <= topYlastLine)
         stopTimer(TimerPreLines);
 
     repaint();

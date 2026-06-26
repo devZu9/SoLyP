@@ -54,21 +54,20 @@ void SoLyPAudioProcessorEditor::initSlots() {
     int linesAvail = song.displayLines.size() - nextLineIndex;
     int linesToShow = std::min(N, linesAvail);
     float totalH = linesToShow * lineHeight;
-    float startY = lyricsViewArea.getY() + (lyricsViewArea.getHeight() - totalH) / 2.0f;
+    topLimit = (double)lyricsViewArea.getY() + (lyricsViewArea.getHeight() - totalH) / 2.0;
     for (int i = 0; i < N; ++i) {
         int idx = nextLineIndex + i;
         if (i < linesToShow && idx < song.displayLines.size()) {
             slots[i].text = song.displayLines[idx].text;
-            slots[i].y = startY + i * lineHeight;
+            slots[i].y = topLimit + i * lineHeight;
         } else {
             slots[i].text = {};
-            slots[i].y = startY + linesToShow * lineHeight;
+            slots[i].y = topLimit + linesToShow * lineHeight;
         }
     }
 
     if (linesToShow > 0)
-        entryY = slots[linesToShow - 1].y;
-    topLimit = startY;
+        topYlastLine = slots[linesToShow - 1].y;
     nextLineIndex = linesToShow;
 
     if (processor.getTransportState() != SoLyPAudioProcessor::TransportState::Stopped)
@@ -93,8 +92,9 @@ void SoLyPAudioProcessorEditor::setupPreLines() {
             slots[i].text = song.displayLines[idx].text;
         else
             slots[i].text = {};
-        slots[i].y = entryY - (float)(N - 1 - i) * lineHeight;
+        slots[i].y = topYlastLine - (float)(N - 1 - i) * lineHeight;
     }
+    nextLineIndex += pre;
 }
 
 // скорость скролла: время прохода одной строки через окно (мс) — зависит от BPM и parts

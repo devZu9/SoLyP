@@ -205,6 +205,7 @@ SoLyPAudioProcessorEditor::SoLyPAudioProcessorEditor(SoLyPAudioProcessor& p)
                     stopTimer(TimerPreLines);
                     stopTimer(TimerPause);
                     stopTimer(TimerCountdown);
+                    fastImage = {};
                     if (slots.empty())
                         initSlots();
                     break;
@@ -212,21 +213,48 @@ SoLyPAudioProcessorEditor::SoLyPAudioProcessorEditor(SoLyPAudioProcessor& p)
                     showPauseText = false;
     lastScrollTime = juce::Time::getMillisecondCounterHiRes();
     realLineHeight = getRealLineHeight();
+                    fastImage = {};
                     stopTimer(TimerPreLines);
                     stopTimer(TimerPause);
                     startTimer(TimerScroll, 50);
                     break;
                  case SoLyPAudioProcessor::TransportState::Paused:
-					showPauseText = true;
+ 					showPauseText = true;
                     pauseMsgY = 0.0;
                     pauseMsgSpeed = getTimePerLine() * 1000.0 / 5.0;
-					lastPauseTime = juce::Time::getMillisecondCounterHiRes();
+ 					lastPauseTime = juce::Time::getMillisecondCounterHiRes();
                     startTimer(TimerPause, 50);
                     stopTimer(TimerCountdown);
-//                    pauseShiftCount = 0;
-//                    preScroll = 0.0;
-//                    lastPreLineTime = juce::Time::getMillisecondCounterHiRes();
-//                    startTimer(TimerPreLines, 50);
+
+                    // захват fast-изображения со старым текстом
+                    {
+                        int N = (int)slots.size();
+                        int pre = std::min(SettingsManager::preLinesOnPause, N);
+                        int fastCount = N - pre + 1;
+                        double lh = realLineHeight;
+                        fastImage = juce::Image(juce::Image::ARGB, lyricsViewArea.getWidth(),
+                                                 (int)((double)fastCount * lh + 1.0), true);
+                        juce::Graphics ig(fastImage);
+                        ig.fillAll(juce::Colours::transparentBlack);
+                        ig.setFont(juce::FontOptions(SettingsManager::fontSize));
+                        ig.setColour(Theme::textOnButton);
+                        for (int i = 0; i < fastCount; ++i) {
+                            if (slots[i].text.isEmpty()) continue;
+                            ig.drawText(slots[i].text,
+                                juce::Rectangle<float>(0, (float)((double)i * lh),
+                                    (float)fastImage.getWidth(), (float)lh),
+                                juce::Justification::centred, false);
+                        }
+                        fastImageY = (double)lyricsViewArea.getY();
+
+                        // очистить верхние fastCount слотов — их текст уже в изображении
+                        for (int i = 0; i < fastCount; ++i)
+                            slots[i].text = {};
+                    }
+
+                    pauseShiftCount = 0;
+                    lastPreLineTime = juce::Time::getMillisecondCounterHiRes();
+                    startTimer(TimerPreLines, 50);
                     break;
                 case SoLyPAudioProcessor::TransportState::Countdown:
                 {
@@ -292,6 +320,8 @@ void SoLyPAudioProcessorEditor::paint(juce::Graphics& g)
         initPaint(g);
     else
         paintScroll(g);
+    if (fastImage.isValid())
+        g.drawImageAt(fastImage, lyricsViewArea.getX(), (int)fastImageY);
     paintPauseText(g);
     if (state == SoLyPAudioProcessor::TransportState::Countdown) paintCountdown(g);
     paintStatusBar(g);
