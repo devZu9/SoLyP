@@ -161,7 +161,6 @@ void SoLyPAudioProcessor::processMidiMessage(const juce::MidiMessage& msg)
 
     lastMidiNote = msg.getNoteNumber();
     lastMidiNoteTime = juce::Time::getMillisecondCounterHiRes();
-    if (onStateChanged) onStateChanged();
 
     midiManager.processNote(msg.getNoteNumber(), [this](MidiManager::Command cmd) {
         switch (cmd)

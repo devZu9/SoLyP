@@ -214,6 +214,12 @@ SoLyPAudioProcessorEditor::SoLyPAudioProcessorEditor(SoLyPAudioProcessor& p)
     lastScrollTime = juce::Time::getMillisecondCounterHiRes();
     realLineHeight = getRealLineHeight();
                     fastImage = {};
+                    if (lastState == SoLyPAudioProcessor::TransportState::Stopped
+                        && !processor.getCurrentSong().textSong.isEmpty())
+                    {
+                        nextLineIndex = 0;
+                        setupPreLines();
+                    }
                     stopTimer(TimerPreLines);
                     stopTimer(TimerPause);
                     startTimer(TimerScroll, 50);
