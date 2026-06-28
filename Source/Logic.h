@@ -37,7 +37,7 @@ public:
 
     juce::AudioProcessorValueTreeState& getAPVTS() { return apvts; }
 
-    enum class TransportState { Stopped, Playing, Paused, Countdown };
+    enum class TransportState { Stopped, Playing, Paused, Countdown, SectionChanged };
     TransportState getTransportState() const { return transportState; }
 
     void switchPlay();
@@ -53,6 +53,10 @@ public:
     int sectionTarget = -1;
     int getSectionTarget() const { return sectionTarget; }
     void clearSectionTarget() { sectionTarget = -1; }
+    TransportState stateBeforeCountdown = TransportState::Stopped;
+    void restoreAfterCountdown();
+    TransportState stateBeforeSection = TransportState::Stopped;
+    void restoreAfterSection();
 
     int getLastMidiNote() const { return lastMidiNote; }
     double getLastMidiNoteTime() const { return lastMidiNoteTime; }

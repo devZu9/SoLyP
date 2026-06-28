@@ -26,8 +26,7 @@ void SoLyPAudioProcessorEditor::scrollCallback()
     if (timePerLine <= 0.0 || slots.empty()) { repaint(); return; }
 
     double step = actualTimePerFrameMs / (timePerLine * 1000.0);
-    if (state == SoLyPAudioProcessor::TransportState::Paused
-        || state == SoLyPAudioProcessor::TransportState::Countdown && countdownPhase > 0)
+    if (state == SoLyPAudioProcessor::TransportState::Paused)
         step *= SoLyPAudioProcessorEditor::boost;
 
     double lineHeight = realLineHeight;
@@ -42,6 +41,8 @@ void SoLyPAudioProcessorEditor::scrollCallback()
             if (fastImageY + (double)fastImage.getHeight() < 0.0)
                 fastImage = {};
         }
+        else
+            stopTimer(TimerScroll);
         repaint();
         return;
     }
@@ -109,7 +110,9 @@ void SoLyPAudioProcessorEditor::preLinesCallback()
     }
 
     if (pauseShiftCount >= 1 && slots[N - 1].y <= topYlastLine)
+    {
         stopTimer(TimerPreLines);
+    }
 
     repaint();
 }
@@ -138,17 +141,16 @@ void SoLyPAudioProcessorEditor::pauseCallback()
 void SoLyPAudioProcessorEditor::countdownCallback()
 {
     double now = juce::Time::getMillisecondCounterHiRes();
-    double elapsed = now - countdownPhaseStart;
+    double timeDifference = now - countdownPhaseStart;
 
-    if (elapsed >= countdownPhaseDuration)
+    if (timeDifference >= countdownPhaseDuration)
     {
-        countdownPhase++;
-        if (countdownPhase > 3)
+        countdownPhase--;
+        if (countdownPhase < 1)
         {
             countdownPhase = 0;
             stopTimer(TimerCountdown);
-            stopTimer(TimerScroll);
-            processor.switchPlay();
+            processor.restoreAfterCountdown();
             return;
         }
         countdownPhaseStart = now;

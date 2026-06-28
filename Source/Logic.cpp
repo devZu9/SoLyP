@@ -114,14 +114,24 @@ void SoLyPAudioProcessor::switchCountdown()
 {
     if (transportState == TransportState::Playing
         || transportState == TransportState::Countdown) return;
+    stateBeforeCountdown = transportState;
     transportState = TransportState::Countdown;
+    if (onStateChanged) onStateChanged();
+}
+
+void SoLyPAudioProcessor::restoreAfterCountdown()
+{
+    transportState = stateBeforeCountdown;
     if (onStateChanged) onStateChanged();
 }
 
 void SoLyPAudioProcessor::switchHybrid()
 {
     if (transportState == TransportState::Countdown) return;
-    switchToNextSection();
+    stateBeforeSection = transportState;
+    sectionTarget = -2;
+    transportState = TransportState::SectionChanged;
+    if (onStateChanged) onStateChanged();
     transportState = TransportState::Playing;
     if (onStateChanged) onStateChanged();
 }
@@ -142,13 +152,23 @@ void SoLyPAudioProcessor::loadSong(const Song& song)
 
 void SoLyPAudioProcessor::switchToSection(int index)
 {
+    stateBeforeSection = transportState;
     sectionTarget = index;
+    transportState = TransportState::SectionChanged;
     if (onStateChanged) onStateChanged();
 }
 
 void SoLyPAudioProcessor::switchToNextSection()
 {
-    sectionTarget = -2;  // magic: +1 from current
+    stateBeforeSection = transportState;
+    sectionTarget = -2;
+    transportState = TransportState::SectionChanged;
+    if (onStateChanged) onStateChanged();
+}
+
+void SoLyPAudioProcessor::restoreAfterSection()
+{
+    transportState = stateBeforeSection;
     if (onStateChanged) onStateChanged();
 }
 

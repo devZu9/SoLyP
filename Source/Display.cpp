@@ -229,6 +229,16 @@ SoLyPAudioProcessorEditor::SoLyPAudioProcessorEditor(SoLyPAudioProcessor& p)
                     startTimer(TimerScroll, 50);
                     break;
                  case SoLyPAudioProcessor::TransportState::Paused:
+                    // восстановление после отсчёта — пропустить инициализацию
+                    if (processor.stateBeforeCountdown == SoLyPAudioProcessor::TransportState::Paused) {
+                        processor.stateBeforeCountdown = SoLyPAudioProcessor::TransportState::Stopped;
+                        break;
+                    }
+                    // восстановление после смены секции — пропустить инициализацию
+                    if (processor.stateBeforeSection == SoLyPAudioProcessor::TransportState::Paused) {
+                        processor.stateBeforeSection = SoLyPAudioProcessor::TransportState::Stopped;
+                        break;
+                    }
  					showPauseText = true;
                     pauseMsgY = 0.0;
                     pauseMsgSpeed = getTimePerLine() * 1000.0 / boost;
@@ -255,7 +265,8 @@ SoLyPAudioProcessorEditor::SoLyPAudioProcessorEditor(SoLyPAudioProcessor& p)
                                     (float)fastImage.getWidth(), (float)lh),
                                 juce::Justification::centred, false);
                         }
-                        fastImageY = (double)lyricsViewArea.getY();
+                        // fastImageY = (double)lyricsViewArea.getY();
+                        fastImageY = slots[0].y;
 
                         // очистить верхние fastCount слотов — их текст уже в изображении
                         for (int i = 0; i < fastCount; ++i)
@@ -272,38 +283,43 @@ SoLyPAudioProcessorEditor::SoLyPAudioProcessorEditor(SoLyPAudioProcessor& p)
                         ? (double)SettingsManager::manualBpmValue
                         : processor.getCurrentBpm();
                     if (bpm <= 0.0) bpm = 120.0;
-                    countdownPhaseDuration = 0.5 * (60000.0 / bpm * (double)SettingsManager::timeSignature);
-                    countdownPhase = 1;
+                    const double late = 50.0;
+                    countdownPhaseDuration = 0.5 * (60000.0 / bpm * (double)SettingsManager::timeSignature) - late;
+                    countdownPhase = 3;
                     countdownPhaseStart = juce::Time::getMillisecondCounterHiRes();
+                    stopTimer(TimerScroll);
                     stopTimer(TimerPreLines);
                     stopTimer(TimerPause);
-                    startTimer(TimerScroll, 50);
                     startTimer(TimerCountdown, 50);
                     break;
                 }
+                case SoLyPAudioProcessor::TransportState::SectionChanged:
+                {
+                    const auto& song = processor.getCurrentSong();
+                    int st = processor.getSectionTarget();
+                    int idx = -1;
+                    if (st >= 0) {
+                        idx = findSectionStart(song, st);
+                    } else if (st == -2) {
+                        int curSid = 0;
+                        if (nextLineIndex > 0 && nextLineIndex - 1 < song.displayLines.size())
+                            curSid = song.displayLines[nextLineIndex - 1].sectionId;
+                        idx = findSectionStart(song, curSid + 1);
+                    }
+                    if (idx >= 0) {
+                        nextLineIndex = idx;
+                        setupPreLines();
+                        fastImage = {};
+                        stopTimer(TimerPreLines);
+                        stopTimer(TimerPause);
+                        showPauseText = false;
+                        pauseShiftCount = 1;
+                        sectionJumped = true;
+                    }
+                    processor.clearSectionTarget();
+                    processor.restoreAfterSection();
+                    break;
                 }
-                int st = processor.getSectionTarget();
-                if (st >= 0) {
-                    const auto& song = processor.getCurrentSong();
-                    int idx = findSectionStart(song, st);
-                    if (idx >= 0) {
-                        nextLineIndex = idx;
-                        setupPreLines();
-                        sectionJumped = true;
-                    }
-                    processor.clearSectionTarget();
-                } else if (st == -2) {
-                    const auto& song = processor.getCurrentSong();
-                    int curSid = 0;
-                    if (nextLineIndex > 0 && nextLineIndex - 1 < song.displayLines.size())
-                        curSid = song.displayLines[nextLineIndex - 1].sectionId;
-                    int idx = findSectionStart(song, curSid + 1);
-                    if (idx >= 0) {
-                        nextLineIndex = idx;
-                        setupPreLines();
-                        sectionJumped = true;
-                    }
-                    processor.clearSectionTarget();
                 }
                 lastState = state;
                 repaint();

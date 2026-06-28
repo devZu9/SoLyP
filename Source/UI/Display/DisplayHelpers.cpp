@@ -274,7 +274,7 @@ void SoLyPAudioProcessorEditor::paintStatusBar(juce::Graphics& g)
     }
 
     g.setColour(Theme::textStatusBar);
-    g.setFont(14.0f);
+    g.setFont(juce::Font(juce::FontOptions(14.0f)));
 
     juce::String leftInfo;
     if (song.fileTitle.isNotEmpty())
@@ -322,7 +322,7 @@ void SoLyPAudioProcessorEditor::paintCountdown(juce::Graphics& g)
     if (countdownPhase <= 0 || countdownPhase > 3) return;
 
     double now = juce::Time::getMillisecondCounterHiRes();
-    double totalElapsed = (countdownPhase - 1) * countdownPhaseDuration
+    double totalElapsed = (3.0 - (double)countdownPhase) * countdownPhaseDuration
         + (now - countdownPhaseStart);
     double totalDuration = countdownPhaseDuration * 3.0;
     double progress = juce::jlimit(0.0, 1.0, totalElapsed / totalDuration);
@@ -332,7 +332,7 @@ void SoLyPAudioProcessorEditor::paintCountdown(juce::Graphics& g)
 
     g.setColour(Theme::textPause);
     g.setFont(juce::FontOptions(72.0f, juce::Font::bold));
-    g.drawText(juce::String(4 - countdownPhase),
+    g.drawText(juce::String(countdownPhase),
         area.withY(textY).withHeight(80), juce::Justification::centred);
 
     int barW = getWidth() - 80;
