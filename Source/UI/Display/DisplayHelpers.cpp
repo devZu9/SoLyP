@@ -94,6 +94,9 @@ void SoLyPAudioProcessorEditor::setupPreLines() {
             slots[i].text = {};
         slots[i].y = topYlastLine - (float)(N - 1 - i) * lineHeight;
     }
+    // очистить верхние слоты — старый текст не нужен
+    for (int i = 0; i < N - pre; ++i)
+        slots[i].text = {};
     nextLineIndex += pre;
 }
 

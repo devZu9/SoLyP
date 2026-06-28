@@ -16,6 +16,8 @@ class SoLyPAudioProcessorEditor : public juce::AudioProcessorEditor,
                                   private juce::ComponentListener
 {
 public:
+    static constexpr double boost = 15.0;
+
     SoLyPAudioProcessorEditor(SoLyPAudioProcessor&);
     ~SoLyPAudioProcessorEditor() override;
 
@@ -78,6 +80,7 @@ private:
     bool useCenterY = true;
     SoLyPAudioProcessor::TransportState lastState = SoLyPAudioProcessor::TransportState::Stopped;
     std::atomic<bool> stateChangeQueued{false};
+    bool sectionJumped = false;
 
     // pause
     bool showPauseText = false;

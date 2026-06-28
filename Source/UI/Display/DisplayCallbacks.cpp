@@ -28,7 +28,7 @@ void SoLyPAudioProcessorEditor::scrollCallback()
     double step = actualTimePerFrameMs / (timePerLine * 1000.0);
     if (state == SoLyPAudioProcessor::TransportState::Paused
         || state == SoLyPAudioProcessor::TransportState::Countdown && countdownPhase > 0)
-        step *= 5.0;
+        step *= SoLyPAudioProcessorEditor::boost;
 
     double lineHeight = realLineHeight;
     double stepPerFramePx = step * lineHeight;

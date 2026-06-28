@@ -206,6 +206,7 @@ SoLyPAudioProcessorEditor::SoLyPAudioProcessorEditor(SoLyPAudioProcessor& p)
                     stopTimer(TimerPause);
                     stopTimer(TimerCountdown);
                     fastImage = {};
+                    sectionJumped = false;
                     if (slots.empty())
                         initSlots();
                     break;
@@ -217,8 +218,11 @@ SoLyPAudioProcessorEditor::SoLyPAudioProcessorEditor(SoLyPAudioProcessor& p)
                     if (lastState == SoLyPAudioProcessor::TransportState::Stopped
                         && !processor.getCurrentSong().textSong.isEmpty())
                     {
-                        nextLineIndex = 0;
-                        setupPreLines();
+                        if (!sectionJumped) {
+                            nextLineIndex = 0;
+                            setupPreLines();
+                        }
+                        sectionJumped = false;
                     }
                     stopTimer(TimerPreLines);
                     stopTimer(TimerPause);
@@ -227,7 +231,7 @@ SoLyPAudioProcessorEditor::SoLyPAudioProcessorEditor(SoLyPAudioProcessor& p)
                  case SoLyPAudioProcessor::TransportState::Paused:
  					showPauseText = true;
                     pauseMsgY = 0.0;
-                    pauseMsgSpeed = getTimePerLine() * 1000.0 / 5.0;
+                    pauseMsgSpeed = getTimePerLine() * 1000.0 / boost;
  					lastPauseTime = juce::Time::getMillisecondCounterHiRes();
                     startTimer(TimerPause, 50);
                     stopTimer(TimerCountdown);
@@ -285,6 +289,7 @@ SoLyPAudioProcessorEditor::SoLyPAudioProcessorEditor(SoLyPAudioProcessor& p)
                     if (idx >= 0) {
                         nextLineIndex = idx;
                         setupPreLines();
+                        sectionJumped = true;
                     }
                     processor.clearSectionTarget();
                 } else if (st == -2) {
@@ -296,6 +301,7 @@ SoLyPAudioProcessorEditor::SoLyPAudioProcessorEditor(SoLyPAudioProcessor& p)
                     if (idx >= 0) {
                         nextLineIndex = idx;
                         setupPreLines();
+                        sectionJumped = true;
                     }
                     processor.clearSectionTarget();
                 }
