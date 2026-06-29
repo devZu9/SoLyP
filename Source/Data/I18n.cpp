@@ -34,9 +34,9 @@ namespace
             return;
         }
 
-        // try to copy from langs/ next to working directory (dev)
+        // try to copy from resources/langs/ next to working directory (dev)
         auto src = juce::File::getCurrentWorkingDirectory()
-            .getChildFile("langs").getChildFile(lang + ".json");
+            .getChildFile("resources").getChildFile("langs").getChildFile(lang + ".json");
         if (src.existsAsFile())
         {
             file.getParentDirectory().createDirectory();

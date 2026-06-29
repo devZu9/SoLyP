@@ -70,10 +70,10 @@ if(WIN32)
 endif()
 
 # copy lang and theme files to build output
-file(COPY ${CMAKE_SOURCE_DIR}/langs/ DESTINATION ${CMAKE_BINARY_DIR}/langs)
-file(COPY ${CMAKE_SOURCE_DIR}/langs/ DESTINATION ${CMAKE_BINARY_DIR}/SoLyP_artefacts/Debug/Standalone/langs)
-file(COPY ${CMAKE_SOURCE_DIR}/Documents/SoLyP/themes/ DESTINATION ${CMAKE_BINARY_DIR}/themes)
-file(COPY ${CMAKE_SOURCE_DIR}/Documents/SoLyP/themes/ DESTINATION ${CMAKE_BINARY_DIR}/SoLyP_artefacts/Debug/Standalone/themes)
+file(COPY ${CMAKE_SOURCE_DIR}/resources/langs/ DESTINATION ${CMAKE_BINARY_DIR}/resources/langs)
+file(COPY ${CMAKE_SOURCE_DIR}/resources/langs/ DESTINATION ${CMAKE_BINARY_DIR}/SoLyP_artefacts/Debug/Standalone/resources/langs)
+file(COPY ${CMAKE_SOURCE_DIR}/resources/themes/ DESTINATION ${CMAKE_BINARY_DIR}/resources/themes)
+file(COPY ${CMAKE_SOURCE_DIR}/resources/themes/ DESTINATION ${CMAKE_BINARY_DIR}/SoLyP_artefacts/Debug/Standalone/resources/themes)
 
 if(MSVC)
     target_compile_options(SoLyP PRIVATE /W4 /utf-8)

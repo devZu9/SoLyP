@@ -36,5 +36,9 @@ Thumbs.db
 # Token
 .github_token
 
+# OpenCode
+opencode.json
+.opencode/
+
 # Technical specification (ТЗ)
 ТЗ*.md
